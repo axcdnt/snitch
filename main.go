@@ -1,57 +1,88 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 )
 
 // FileInfo ...
-type FileInfo struct {
-	Path         string
-	LastModified time.Time
-}
+type FileInfo map[string]time.Time
+
+var watchedFiles = FileInfo{}
 
 func main() {
-	wd, _ := os.Getwd()
-	rootPath := flag.String("path", wd, "the root path to be watched")
+	defaultPath, _ := os.Getwd()
+	rootPath := flag.String("path", defaultPath, "the root path to be watched")
+	watchPeriod := flag.Duration("time", 10*time.Second, "the period (in seconds) for watching files")
 	flag.Parse()
 
-	watchedFiles := walk(rootPath)
-	for _, wf := range watchedFiles {
-		fmt.Printf("File info: %v", wf)
+	watchedFiles = walk(rootPath)
+	runTicker := time.NewTicker(*watchPeriod)
+	for {
+		select {
+		case <-runTicker.C:
+			watch(rootPath)
+		}
 	}
 }
 
-func walk(rootPath *string) []FileInfo {
-	var watchedFiles []FileInfo
+func watch(path *string) {
+	newWatchedFiles := walk(path)
+	for path, lastModified := range newWatchedFiles {
+		if modifiedAt, ok := watchedFiles[path]; ok {
+			fmt.Println("________________")
+			fmt.Println(path)
+			fmt.Printf("Modified at: %v\n", modifiedAt)
+			fmt.Printf("Last modified: %v\n", lastModified)
 
-	err := filepath.Walk(*rootPath, visit(&watchedFiles))
+			if modifiedAt != lastModified {
+				fmt.Printf("Running tests for %s\n", path)
+				watchedFiles[path] = lastModified
+				runCmd(path)
+			}
+		}
+	}
+}
+
+func walk(rootPath *string) FileInfo {
+	newWatchedFiles := FileInfo{}
+	err := filepath.Walk(*rootPath, visit(newWatchedFiles))
 	if err != nil {
 		panic(err)
 	}
 
-	return watchedFiles
+	return newWatchedFiles
 }
 
-func visit(watchedFiles *[]FileInfo) filepath.WalkFunc {
+func visit(watchedFiles FileInfo) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		if filepath.Ext(path) == ".go" {
-			fileInfo := FileInfo{
-				Path:         path,
-				LastModified: info.ModTime(),
-			}
-
-			*watchedFiles = append(*watchedFiles, fileInfo)
+			watchedFiles[path] = info.ModTime()
 		}
 
 		return nil
 	}
+}
+
+func runCmd(path string) {
+	cmd := exec.Command("go", "test", path)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		log.Fatalf("cmd.Run() failed with %s\n", err)
+	}
+	outStr, errStr := string(stdout.Bytes()), string(stderr.Bytes())
+	fmt.Printf("out:\n%s\nerr:\n%s\n", outStr, errStr)
 }
