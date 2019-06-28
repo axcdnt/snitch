@@ -4,7 +4,7 @@ This is a pet project command line app that helps by watching your test files an
 
 It works **only for Go** files and it's highly inspired on [Guard](https://github.com/guard/guard).
 
-Notice that you must have Go installed. :heart:
+Notice that you must have Go 1.12+ installed. :heart:
 
 ## How to
 
@@ -14,6 +14,13 @@ Notice that you must have Go installed. :heart:
 
 ### Run
 
-`./snitch --path <root-path> --time <time>`
+`./snitch --path <root-path> --time <time-in-seconds>`
+
+The path and time params are both optional:
+
+```
+path: defaults to current dir
+time: defaults to 10s
+```
 
 If you have suggestions, doubts and bug reports, just let me know and let's improve it! I hope you enjoy it!
