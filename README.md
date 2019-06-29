@@ -1,7 +1,7 @@
 # Snitch
 
-Snitch is a binary that helps your TDD cycle or not so TDD by watching tests and implementations of Go files.
-It works by scanning files, checking the modification date and when changed, giving feedback on your console.
+Snitch is a binary that helps your TDD cycle (or not) by watching tests and implementations of Go files.
+It works by scanning files, checking the modification date and when changed, re-runs the tests.
 
 It's usual in Go projects to keep the implementation and tests under the same package, so this binary follows this _convention_.
 
@@ -13,15 +13,15 @@ Inspired by [Guard](https://github.com/guard/guard), I decided to build this and
 
 ## Requirements
 
-Go 1.12+ installed. :heart:
+Go 1.12+ :heart:
 
-## How to
+The binary is _go-gettable_. Make sure you have `GOPATH` correctly set and added to the `$PATH`:
 
-### Compilation
+`go get github.com/axcdnt/snitch`
 
-`go build`
+After _go-getting_ the binary, it will probably be available on your terminal.
 
-### Run
+## Run
 
 `./snitch --path <root-path> --time <time-in-seconds>`
 
