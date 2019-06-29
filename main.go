@@ -21,11 +21,16 @@ var watchedFiles = FileInfo{}
 func main() {
 	defaultPath, _ := os.Getwd()
 	rootPath := flag.String("path", defaultPath, "the root path to be watched")
-	watchInterval := flag.Duration("interval", 5*time.Second, "the interval (in seconds) for scanning files")
+	interval := flag.Int("interval", 5, "the interval (in seconds) for scanning files")
 	flag.Parse()
 
 	watchedFiles = walk(rootPath)
-	runTicker := time.NewTicker(*watchInterval)
+	scheduleScanAt(rootPath, interval)
+}
+
+func scheduleScanAt(rootPath *string, interval *int) {
+	runTicker := time.NewTicker(
+		time.Duration(time.Duration(*interval) * time.Second))
 	for {
 		select {
 		case <-runTicker.C:
@@ -46,14 +51,14 @@ func scan(basePath *string) {
 }
 
 func runOrSkipTest(filePath string) {
-	// for a go file, run its respective test
 	if isRegularFile(filePath) {
+		// run the respective test for go files
 		testFilePath := findTestFilePath(filePath)
 		if testFilePath != "" {
 			test(testFilePath)
 		}
 	} else {
-		// run _test.go files
+		// run tests directly
 		test(filePath)
 	}
 }
@@ -82,8 +87,8 @@ func visit(watchedFiles FileInfo) filepath.WalkFunc {
 	}
 }
 
-func test(path string) {
-	cmd := exec.Command("go", "test", "-run", path)
+func test(filePath string) {
+	cmd := exec.Command("go", "test", "-run", filePath)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -96,8 +101,8 @@ func findTestFilePath(filePath string) string {
 	fileName := path.Base(filePath)
 	if isRegularFile(fileName) {
 		path := path.Dir(filePath)
-		fileWithoutExtension := strings.Split(fileName, ".")[0]
-		testFilePath := filepath.Join(path, fileWithoutExtension+"_test.go")
+		extensionLessFileName := strings.Split(fileName, ".")[0]
+		testFilePath := filepath.Join(path, extensionLessFileName+"_test.go")
 		if _, ok := watchedFiles[testFilePath]; ok {
 			return testFilePath
 		}
