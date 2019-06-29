@@ -7,7 +7,9 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -19,45 +21,51 @@ var watchedFiles = FileInfo{}
 func main() {
 	defaultPath, _ := os.Getwd()
 	rootPath := flag.String("path", defaultPath, "the root path to be watched")
-	watchPeriod := flag.Duration("time", 10*time.Second, "the period (in seconds) for watching files")
+	watchInterval := flag.Duration("interval", 5*time.Second, "the interval (in seconds) for scanning files")
 	flag.Parse()
 
 	watchedFiles = walk(rootPath)
-	runTicker := time.NewTicker(*watchPeriod)
+	runTicker := time.NewTicker(*watchInterval)
 	for {
 		select {
 		case <-runTicker.C:
-			watch(rootPath)
+			scan(rootPath)
 		}
 	}
 }
 
-func watch(path *string) {
-	newWatchedFiles := walk(path)
-	for path, lastModified := range newWatchedFiles {
-		if modifiedAt, ok := watchedFiles[path]; ok {
-			fmt.Println("________________")
-			fmt.Println(path)
-			fmt.Printf("Modified at: %v\n", modifiedAt)
-			fmt.Printf("Last modified: %v\n", lastModified)
-
-			if modifiedAt != lastModified {
-				fmt.Printf("Running tests for %s\n", path)
-				watchedFiles[path] = lastModified
-				runCmd(path)
+func scan(basePath *string) {
+	for filePath, mostRecentModTime := range walk(basePath) {
+		if lastModTime, ok := watchedFiles[filePath]; ok {
+			if lastModTime != mostRecentModTime {
+				watchedFiles[filePath] = mostRecentModTime
+				runOrSkipTest(filePath)
 			}
 		}
 	}
 }
 
+func runOrSkipTest(filePath string) {
+	// for a go file, run its respective test
+	if isRegularFile(filePath) {
+		testFilePath := findTestFilePath(filePath)
+		if testFilePath != "" {
+			test(testFilePath)
+		}
+	} else {
+		// run _test.go files
+		test(filePath)
+	}
+}
+
 func walk(rootPath *string) FileInfo {
-	newWatchedFiles := FileInfo{}
-	err := filepath.Walk(*rootPath, visit(newWatchedFiles))
+	reWatchedFiles := FileInfo{}
+	err := filepath.Walk(*rootPath, visit(reWatchedFiles))
 	if err != nil {
 		panic(err)
 	}
 
-	return newWatchedFiles
+	return reWatchedFiles
 }
 
 func visit(watchedFiles FileInfo) filepath.WalkFunc {
@@ -74,15 +82,34 @@ func visit(watchedFiles FileInfo) filepath.WalkFunc {
 	}
 }
 
-func runCmd(path string) {
-	cmd := exec.Command("go", "test", path)
+func test(path string) {
+	cmd := exec.Command("go", "test", "-run", path)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
+	cmd.Run()
+	outStr := string(stdout.Bytes())
+	fmt.Printf("%s", outStr)
+}
+
+func findTestFilePath(filePath string) string {
+	fileName := path.Base(filePath)
+	if isRegularFile(fileName) {
+		path := path.Dir(filePath)
+		fileWithoutExtension := strings.Split(fileName, ".")[0]
+		testFilePath := filepath.Join(path, fileWithoutExtension+"_test.go")
+		if _, ok := watchedFiles[testFilePath]; ok {
+			return testFilePath
+		}
 	}
-	outStr, errStr := string(stdout.Bytes()), string(stderr.Bytes())
-	fmt.Printf("out:\n%s\nerr:\n%s\n", outStr, errStr)
+
+	return ""
+}
+
+func isRegularFile(fileName string) bool {
+	if !strings.HasSuffix(fileName, "_test.go") {
+		return true
+	}
+
+	return false
 }
