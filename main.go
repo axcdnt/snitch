@@ -39,8 +39,8 @@ func scheduleScanAt(rootPath *string, interval *int) {
 	}
 }
 
-func scan(basePath *string) {
-	for filePath, mostRecentModTime := range walk(basePath) {
+func scan(rootPath *string) {
+	for filePath, mostRecentModTime := range walk(rootPath) {
 		if lastModTime, ok := watchedFiles[filePath]; ok {
 			if lastModTime != mostRecentModTime {
 				watchedFiles[filePath] = mostRecentModTime
@@ -50,27 +50,14 @@ func scan(basePath *string) {
 	}
 }
 
-func runOrSkipTest(filePath string) {
-	if isRegularFile(filePath) {
-		// run the respective test for go files
-		testFilePath := findTestFilePath(filePath)
-		if testFilePath != "" {
-			test(testFilePath)
-		}
-	} else {
-		// run tests directly
-		test(filePath)
-	}
-}
-
 func walk(rootPath *string) FileInfo {
-	reWatchedFiles := FileInfo{}
-	err := filepath.Walk(*rootPath, visit(reWatchedFiles))
+	watchedFiles := FileInfo{}
+	err := filepath.Walk(*rootPath, visit(watchedFiles))
 	if err != nil {
 		panic(err)
 	}
 
-	return reWatchedFiles
+	return watchedFiles
 }
 
 func visit(watchedFiles FileInfo) filepath.WalkFunc {
@@ -87,14 +74,17 @@ func visit(watchedFiles FileInfo) filepath.WalkFunc {
 	}
 }
 
-func test(filePath string) {
-	cmd := exec.Command("go", "test", "-run", filePath)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	cmd.Run()
-	outStr := string(stdout.Bytes())
-	fmt.Printf("%s", outStr)
+func runOrSkipTest(filePath string) {
+	if isRegularFile(filePath) {
+		// run the respective test for go files
+		testFilePath := findTestFilePath(filePath)
+		if testFilePath != "" {
+			test(testFilePath)
+		}
+	} else {
+		// run tests directly
+		test(filePath)
+	}
 }
 
 func findTestFilePath(filePath string) string {
@@ -112,9 +102,15 @@ func findTestFilePath(filePath string) string {
 }
 
 func isRegularFile(fileName string) bool {
-	if !strings.HasSuffix(fileName, "_test.go") {
-		return true
-	}
+	return !strings.HasSuffix(fileName, "_test.go")
+}
 
-	return false
+func test(filePath string) {
+	cmd := exec.Command("go", "test", "-run", filePath)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	cmd.Run()
+	outStr := string(stdout.Bytes())
+	fmt.Printf("%s", outStr)
 }
