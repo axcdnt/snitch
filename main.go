@@ -46,6 +46,10 @@ func scan(rootPath *string) {
 				watchedFiles[filePath] = mostRecentModTime
 				runOrSkipTest(filePath)
 			}
+		} else {
+			// files recently added
+			fileInfo, _ := os.Stat(filePath)
+			watchedFiles[filePath] = fileInfo.ModTime()
 		}
 	}
 }
@@ -107,7 +111,7 @@ func isRegularFile(fileName string) bool {
 
 func test(filePath string) {
 	clear()
-	cmd := exec.Command("go", "test", "-run", filePath)
+	cmd := exec.Command("go", "test", path.Dir(filePath))
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
