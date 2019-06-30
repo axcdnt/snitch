@@ -111,7 +111,7 @@ func isRegularFile(fileName string) bool {
 
 func test(filePath string) {
 	clear()
-	cmd := exec.Command("go", "test", path.Dir(filePath))
+	cmd := exec.Command("go", "test", "-cover", path.Dir(filePath))
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
