@@ -106,6 +106,7 @@ func isRegularFile(fileName string) bool {
 }
 
 func test(filePath string) {
+	clear()
 	cmd := exec.Command("go", "test", "-run", filePath)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -113,4 +114,10 @@ func test(filePath string) {
 	cmd.Run()
 	outStr := string(stdout.Bytes())
 	fmt.Printf("%s", outStr)
+}
+
+func clear() {
+	cmd := exec.Command("clear")
+	cmd.Stdout = os.Stdout
+	cmd.Run()
 }
