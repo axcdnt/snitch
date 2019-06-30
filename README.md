@@ -1,15 +1,24 @@
 # Snitch
 
 Snitch is a binary that helps your TDD cycle (or not) by watching tests and implementations of Go files.
-It works by scanning files, checking the modification date and when changed, re-runs the tests.
+It works by scanning files, checking the modification date on save re-running your tests.
 
 It's usual in Go projects to keep the implementation and tests under the same package, so this binary follows this _convention_.
+
+This tool focuses on Go developers. With a few LOCs we get interesting stuff.
 
 ## Inspiration
 
 It was a Friday afternoon and I was writing code, but had nothing to watch and report my tests while I changed code.
 
 Inspired by [Guard](https://github.com/guard/guard), I decided to build this and thought more people could benefit from it.
+
+## Features
+
+- Automatically runs your tests
+- Re-scan new files, so no need to restart
+- Runs on a package basis
+- Shows test coverage percentage
 
 ## Requirements
 
@@ -32,4 +41,6 @@ path: defaults to current dir
 interval: defaults to 5s
 ```
 
-If you have suggestions, doubts and bug reports, just let me know and let's improve it! I hope you enjoy it!
+During my tests I noticed that passing `path` for `go test` shows a peculiar behavior and cannot resolve it. An alternative use case is to always run `snitch` inside the project. Avoid the `--path` by now.
+
+Feedback is welcome. I hope you enjoy it!
