@@ -48,23 +48,31 @@ func scheduleScanAt(rootPath *string, interval *time.Duration) {
 
 func scan(rootPath *string) {
 	for filePath, mostRecentModTime := range walk(rootPath) {
-		if lastModTime, ok := watchedFiles[filePath]; ok {
-			if lastModTime != mostRecentModTime {
-				watchedFiles[filePath] = mostRecentModTime
-				runOrSkipTest(filePath)
-			}
-		} else {
+		lastModTime, ok := watchedFiles[filePath]
+		if !ok {
 			// files recently added
-			fileInfo, _ := os.Stat(filePath)
+			fileInfo, err := os.Stat(filePath)
+			if err != nil {
+				log.Print("Stat:", filePath, err)
+				return
+			}
 			watchedFiles[filePath] = fileInfo.ModTime()
+			return
 		}
+
+		// no changes
+		if lastModTime == mostRecentModTime {
+			return
+		}
+
+		watchedFiles[filePath] = mostRecentModTime
+		runOrSkipTest(filePath)
 	}
 }
 
 func walk(rootPath *string) FileInfo {
 	watchedFiles := FileInfo{}
-	err := filepath.Walk(*rootPath, visit(watchedFiles))
-	if err != nil {
+	if err := filepath.Walk(*rootPath, visit(watchedFiles)); err != nil {
 		log.Fatal("walk:", err)
 	}
 
