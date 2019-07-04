@@ -21,16 +21,15 @@ var watchedFiles = FileInfo{}
 func main() {
 	defaultPath, _ := os.Getwd()
 	rootPath := flag.String("path", defaultPath, "the root path to be watched")
-	interval := flag.Int("interval", 5, "the interval (in seconds) for scanning files")
+	interval := flag.Duration("interval", 5*time.Second, "the interval (in seconds) for scanning files")
 	flag.Parse()
 
 	watchedFiles = walk(rootPath)
 	scheduleScanAt(rootPath, interval)
 }
 
-func scheduleScanAt(rootPath *string, interval *int) {
-	runTicker := time.NewTicker(
-		time.Duration(time.Duration(*interval) * time.Second))
+func scheduleScanAt(rootPath *string, interval *time.Duration) {
+	runTicker := time.NewTicker(*interval)
 	for {
 		select {
 		case <-runTicker.C:
