@@ -19,10 +19,18 @@ type FileInfo map[string]time.Time
 var watchedFiles = FileInfo{}
 
 func main() {
-	defaultPath, _ := os.Getwd()
+	defaultPath, err := os.Getwd()
+	if err != nil {
+		log.Fatal("Getwd: ", err)
+	}
+
 	rootPath := flag.String("path", defaultPath, "the root path to be watched")
 	interval := flag.Duration("interval", 5*time.Second, "the interval (in seconds) for scanning files")
 	flag.Parse()
+
+	if *interval < 0 {
+		log.Fatal("negative interval:", *interval)
+	}
 
 	watchedFiles = walk(rootPath)
 	scheduleScanAt(rootPath, interval)
