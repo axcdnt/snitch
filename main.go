@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -39,6 +37,7 @@ func main() {
 }
 
 func scan(rootPath *string) {
+	changedDirs := make(map[string]bool, 0)
 	for filePath, mostRecentModTime := range walk(rootPath) {
 		lastModTime, ok := watchedFiles[filePath]
 		if !ok {
@@ -46,19 +45,28 @@ func scan(rootPath *string) {
 			fileInfo, err := os.Stat(filePath)
 			if err != nil {
 				log.Print("Stat:", filePath, err)
-				return
+				continue
 			}
 			watchedFiles[filePath] = fileInfo.ModTime()
-			return
+			continue
 		}
 
 		// no changes
 		if lastModTime == mostRecentModTime {
-			return
+			continue
 		}
 
 		watchedFiles[filePath] = mostRecentModTime
-		runOrSkipTest(filePath)
+		if !needsTest(filePath) {
+			continue
+		}
+
+		pkgDir := path.Dir(filePath)
+		changedDirs[pkgDir] = true
+	}
+
+	for dir := range changedDirs {
+		test(dir)
 	}
 }
 
@@ -84,50 +92,33 @@ func visit(wf FileInfo) filepath.WalkFunc {
 	}
 }
 
-func runOrSkipTest(filePath string) {
-	testFilePath := findTestFilePath(filePath)
-	if testFilePath == "" {
-		// there is no test file for the modified path, ignore.
-		return
-	}
-	test(testFilePath)
-}
-
-func findTestFilePath(filePath string) string {
+// needsTest returns if we need to run test for the changed path.
+func needsTest(filePath string) bool {
 	if isTestFile(filePath) {
-		// change happened on a test file, just return its path.
-		return filePath
+		// change happened on a test file, we need to test.
+		return true
 	}
 
-	// changed file is not a test file, we need to change its path to
-	// contain an _test.go suffix then return the full path. if test
-	// file for the changed path does not exist, returns empty string
-	// instead.
+	// changed file is not a test file, we return true only if there is a
+	// test file for the go file.
 	fileName := path.Base(filePath)
 	path := path.Dir(filePath)
 	extensionLessFileName := strings.Split(fileName, ".")[0]
 	testFilePath := filepath.Join(path, extensionLessFileName+"_test.go")
-	if _, ok := watchedFiles[testFilePath]; !ok {
-		// no test file exists, return empty.
-		return ""
-	}
-
-	return testFilePath
+	_, ok := watchedFiles[testFilePath]
+	return ok
 }
 
 func isTestFile(fileName string) bool {
 	return strings.HasSuffix(fileName, "_test.go")
 }
 
-func test(filePath string) {
+func test(dir string) {
 	clear()
-	cmd := exec.Command("go", "test", "-cover", path.Dir(filePath))
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	cmd := exec.Command("go", "test", "-v", "-cover", dir)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	cmd.Run()
-	outStr := string(stdout.Bytes())
-	fmt.Printf("%s", outStr)
 }
 
 func clear() {
