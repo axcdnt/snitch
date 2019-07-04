@@ -79,7 +79,7 @@ func scan(rootPath *string) {
 func walk(rootPath *string) FileInfo {
 	wf := FileInfo{}
 	if err := filepath.Walk(*rootPath, visit(wf)); err != nil {
-		log.Fatal("walk:", err)
+		log.Fatal("Walk:", err)
 	}
 	return wf
 }
@@ -109,8 +109,10 @@ func needsTest(filePath string) bool {
 	// test file for the go file.
 	fileName := path.Base(filePath)
 	path := path.Dir(filePath)
-	extensionLessFileName := strings.Split(fileName, ".")[0]
-	testFilePath := filepath.Join(path, extensionLessFileName+"_test.go")
+
+	ext := filepath.Ext(fileName)
+	extLessName := fileName[0 : len(fileName)-len(ext)]
+	testFilePath := filepath.Join(path, extLessName+"_test.go")
 	_, ok := watchedFiles[testFilePath]
 	return ok
 }
