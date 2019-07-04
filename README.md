@@ -44,6 +44,4 @@ interval: defaults to 5s
 Interval command line argument accepts any [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration)
 "parseable" string, i.e. for faster scans you may use `--interval=500ms`.
 
-During my tests I noticed that passing `path` for `go test` shows a peculiar behavior and cannot resolve it. An alternative use case is to always run `snitch` inside the project. Avoid the `--path` by now.
-
 Feedback is welcome. I hope you enjoy it!

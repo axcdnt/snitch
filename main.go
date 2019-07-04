@@ -30,6 +30,10 @@ func main() {
 		log.Fatal("negative interval:", *interval)
 	}
 
+	if err := os.Chdir(*rootPath); err != nil {
+		log.Fatal("Chdir:", err)
+	}
+
 	watchedFiles = walk(rootPath)
 	for range time.NewTicker(*interval).C {
 		scan(rootPath)
