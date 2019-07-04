@@ -71,21 +71,21 @@ func scan(rootPath *string) {
 }
 
 func walk(rootPath *string) FileInfo {
-	watchedFiles := FileInfo{}
-	if err := filepath.Walk(*rootPath, visit(watchedFiles)); err != nil {
+	wf := FileInfo{}
+	if err := filepath.Walk(*rootPath, visit(wf)); err != nil {
 		log.Fatal("walk:", err)
 	}
-	return watchedFiles
+	return wf
 }
 
-func visit(watchedFiles FileInfo) filepath.WalkFunc {
+func visit(wf FileInfo) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
 		if filepath.Ext(path) == ".go" {
-			watchedFiles[path] = info.ModTime()
+			wf[path] = info.ModTime()
 		}
 
 		return nil
