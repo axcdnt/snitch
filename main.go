@@ -74,7 +74,7 @@ func walk(rootPath *string) FileInfo {
 func visit(watchedFiles FileInfo) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		if filepath.Ext(path) == ".go" {
