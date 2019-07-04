@@ -65,7 +65,7 @@ func walk(rootPath *string) FileInfo {
 	watchedFiles := FileInfo{}
 	err := filepath.Walk(*rootPath, visit(watchedFiles))
 	if err != nil {
-		panic(err)
+		log.Fatal("walk:", err)
 	}
 
 	return watchedFiles
