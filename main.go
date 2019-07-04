@@ -33,16 +33,8 @@ func main() {
 	}
 
 	watchedFiles = walk(rootPath)
-	scheduleScanAt(rootPath, interval)
-}
-
-func scheduleScanAt(rootPath *string, interval *time.Duration) {
-	runTicker := time.NewTicker(*interval)
-	for {
-		select {
-		case <-runTicker.C:
-			scan(rootPath)
-		}
+	for range time.NewTicker(*interval).C {
+		scan(rootPath)
 	}
 }
 
