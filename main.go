@@ -65,9 +65,15 @@ func scan(rootPath *string) {
 		changedDirs[pkgDir] = true
 	}
 
-	for dir := range changedDirs {
-		test(dir)
+	if len(changedDirs) == 0 {
+		return
 	}
+
+	dedup := make([]string, 0)
+	for dir := range changedDirs {
+		dedup = append(dedup, dir)
+	}
+	test(dedup)
 }
 
 func walk(rootPath *string) FileInfo {
@@ -113,12 +119,14 @@ func isTestFile(fileName string) bool {
 	return strings.HasSuffix(fileName, "_test.go")
 }
 
-func test(dir string) {
+func test(dirs []string) {
 	clear()
-	cmd := exec.Command("go", "test", "-v", "-cover", dir)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run()
+	for _, dir := range dirs {
+		cmd := exec.Command("go", "test", "-v", "-cover", dir)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
+	}
 }
 
 func clear() {
