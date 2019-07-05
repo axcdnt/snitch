@@ -32,15 +32,13 @@ After _go-getting_ the binary, it will probably be available on your terminal.
 
 ## Run
 
-`./snitch --path <root-path> --time <time-in-seconds>`
-
-The path and time params are both _optional_:
-
 ```
-path: defaults to current dir
-interval: defaults to 5s
+▶ snitch --help
+Usage of snitch:
+  -interval duration
+    	the interval (in seconds) for scanning files (default 1s)
+  -path string
+    	the root path to be watched (default "<current-dir>")
 ```
-
-During my tests I noticed that passing `path` for `go test` shows a peculiar behavior and cannot resolve it. An alternative use case is to always run `snitch` inside the project. Avoid the `--path` by now.
 
 Feedback is welcome. I hope you enjoy it!
