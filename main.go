@@ -20,7 +20,7 @@ var watchedFiles = FileInfo{}
 func main() {
 	defaultPath, err := os.Getwd()
 	if err != nil {
-		log.Fatal("Getwd: ", err)
+		log.Fatal("could not get current directory::", err)
 	}
 
 	rootPath := flag.String("path", defaultPath, "the root path to be watched")
