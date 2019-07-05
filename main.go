@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"log"
@@ -13,111 +12,124 @@ import (
 	"time"
 )
 
-// FileInfo ...
+// FileInfo represents a file and its modification date
 type FileInfo map[string]time.Time
 
-var watchedFiles = FileInfo{}
-
 func main() {
-	defaultPath, _ := os.Getwd()
+	defaultPath, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("could not get current directory: %v", err)
+	}
+
 	rootPath := flag.String("path", defaultPath, "the root path to be watched")
-	interval := flag.Int("interval", 5, "the interval (in seconds) for scanning files")
+	interval := flag.Duration("interval", 1*time.Second, "the interval (in seconds) for scanning files")
 	flag.Parse()
 
-	watchedFiles = walk(rootPath)
-	scheduleScanAt(rootPath, interval)
-}
+	if *interval < 0 {
+		log.Fatal("invalid interval, must be > 0", *interval)
+	}
 
-func scheduleScanAt(rootPath *string, interval *int) {
-	runTicker := time.NewTicker(
-		time.Duration(time.Duration(*interval) * time.Second))
-	for {
-		select {
-		case <-runTicker.C:
-			scan(rootPath)
-		}
+	if err := os.Chdir(*rootPath); err != nil {
+		log.Fatal("could not change directory:", err)
+	}
+
+	log.Print("Snitch started")
+	watchedFiles := walk(rootPath)
+	for range time.NewTicker(*interval).C {
+		scan(rootPath, watchedFiles)
 	}
 }
 
-func scan(rootPath *string) {
+func scan(rootPath *string, watchedFiles FileInfo) {
+	modifiedDirs := make(map[string]bool, 0)
 	for filePath, mostRecentModTime := range walk(rootPath) {
-		if lastModTime, ok := watchedFiles[filePath]; ok {
-			if lastModTime != mostRecentModTime {
-				watchedFiles[filePath] = mostRecentModTime
-				runOrSkipTest(filePath)
+		lastModTime, found := watchedFiles[filePath]
+		if found {
+			if lastModTime == mostRecentModTime {
+				// no changes
+				continue
 			}
-		} else {
-			// files recently added
-			fileInfo, _ := os.Stat(filePath)
-			watchedFiles[filePath] = fileInfo.ModTime()
+
+			watchedFiles[filePath] = mostRecentModTime
+			if shouldRunTests(filePath, watchedFiles) {
+				pkgDir := path.Dir(filePath)
+				modifiedDirs[pkgDir] = true
+			}
 		}
+
+		// files recently added
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			log.Print("Stat:", filePath, err)
+			continue
+		}
+		watchedFiles[filePath] = fileInfo.ModTime()
+		continue
 	}
+
+	if len(modifiedDirs) == 0 {
+		return
+	}
+
+	dedup := make([]string, 0)
+	for dir := range modifiedDirs {
+		dedup = append(dedup, dir)
+	}
+	test(dedup)
 }
 
 func walk(rootPath *string) FileInfo {
-	watchedFiles := FileInfo{}
-	err := filepath.Walk(*rootPath, visit(watchedFiles))
-	if err != nil {
-		panic(err)
+	wf := FileInfo{}
+	if err := filepath.Walk(*rootPath, visit(wf)); err != nil {
+		log.Fatal("could not traverse files:", err)
 	}
 
-	return watchedFiles
+	return wf
 }
 
-func visit(watchedFiles FileInfo) filepath.WalkFunc {
+func visit(wf FileInfo) filepath.WalkFunc {
 	return func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		if filepath.Ext(path) == ".go" {
-			watchedFiles[path] = info.ModTime()
+			wf[path] = info.ModTime()
 		}
 
 		return nil
 	}
 }
 
-func runOrSkipTest(filePath string) {
-	if isRegularFile(filePath) {
-		// run the respective test for go files
-		testFilePath := findTestFilePath(filePath)
-		if testFilePath != "" {
-			test(testFilePath)
-		}
-	} else {
-		// run tests directly
-		test(filePath)
-	}
+func shouldRunTests(filePath string, watchedFiles FileInfo) bool {
+	return isTestFile(filePath) || hasTesfile(filePath, watchedFiles)
 }
 
-func findTestFilePath(filePath string) string {
-	fileName := path.Base(filePath)
-	if isRegularFile(fileName) {
-		path := path.Dir(filePath)
-		extensionLessFileName := strings.Split(fileName, ".")[0]
-		testFilePath := filepath.Join(path, extensionLessFileName+"_test.go")
-		if _, ok := watchedFiles[testFilePath]; ok {
-			return testFilePath
-		}
-	}
-
-	return ""
+func isTestFile(fileName string) bool {
+	return strings.HasSuffix(fileName, "_test.go")
 }
 
-func isRegularFile(fileName string) bool {
-	return !strings.HasSuffix(fileName, "_test.go")
+// hasTesfile verifies if a *.go file has a test
+func hasTesfile(filePath string, watchedFiles FileInfo) bool {
+	// looks for a _test.go file
+	ext := filepath.Ext(filePath)
+	testFilePath := fmt.Sprintf(
+		"%s_test.go",
+		filePath[0:len(filePath)-len(ext)],
+	)
+	_, ok := watchedFiles[testFilePath]
+
+	return ok
 }
 
-func test(filePath string) {
+func test(dirs []string) {
 	clear()
-	cmd := exec.Command("go", "test", "-cover", path.Dir(filePath))
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	cmd.Run()
-	outStr := string(stdout.Bytes())
-	fmt.Printf("%s", outStr)
+	for _, dir := range dirs {
+		cmd := exec.Command("go", "test", "-v", "-cover", dir)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
+	}
 }
 
 func clear() {
