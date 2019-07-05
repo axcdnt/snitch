@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -27,11 +28,11 @@ func main() {
 	flag.Parse()
 
 	if *interval < 0 {
-		log.Fatal("negative interval:", *interval)
+		log.Fatal("invalid interval, must be > 0:", *interval)
 	}
 
 	if err := os.Chdir(*rootPath); err != nil {
-		log.Fatal("Chdir:", err)
+		log.Fatal("could not change directory:", err)
 	}
 
 	watchedFiles = walk(rootPath)
@@ -41,7 +42,7 @@ func main() {
 }
 
 func scan(rootPath *string) {
-	changedDirs := make(map[string]bool, 0)
+	modifiedDirs := make(map[string]bool, 0)
 	for filePath, mostRecentModTime := range walk(rootPath) {
 		lastModTime, ok := watchedFiles[filePath]
 		if !ok {
@@ -66,15 +67,15 @@ func scan(rootPath *string) {
 		}
 
 		pkgDir := path.Dir(filePath)
-		changedDirs[pkgDir] = true
+		modifiedDirs[pkgDir] = true
 	}
 
-	if len(changedDirs) == 0 {
+	if len(modifiedDirs) == 0 {
 		return
 	}
 
 	dedup := make([]string, 0)
-	for dir := range changedDirs {
+	for dir := range modifiedDirs {
 		dedup = append(dedup, dir)
 	}
 	test(dedup)
@@ -83,7 +84,7 @@ func scan(rootPath *string) {
 func walk(rootPath *string) FileInfo {
 	wf := FileInfo{}
 	if err := filepath.Walk(*rootPath, visit(wf)); err != nil {
-		log.Fatal("Walk:", err)
+		log.Fatal("could not traverse files:", err)
 	}
 	return wf
 }
@@ -104,25 +105,22 @@ func visit(wf FileInfo) filepath.WalkFunc {
 
 // needsTest returns if we need to run test for the changed path.
 func needsTest(filePath string) bool {
-	if isTestFile(filePath) {
-		// change happened on a test file, we need to test.
-		return true
-	}
-
-	// changed file is not a test file, we return true only if there is a
-	// test file for the go file.
-	fileName := path.Base(filePath)
-	path := path.Dir(filePath)
-
-	ext := filepath.Ext(fileName)
-	extLessName := fileName[0 : len(fileName)-len(ext)]
-	testFilePath := filepath.Join(path, extLessName+"_test.go")
-	_, ok := watchedFiles[testFilePath]
-	return ok
+	return isTestFile(filePath) || hasTestFile(filePath)
 }
 
 func isTestFile(fileName string) bool {
 	return strings.HasSuffix(fileName, "_test.go")
+}
+
+// returns true if a go test file exists for filePath.
+func hasTestFile(filePath string) bool {
+	ext := filepath.Ext(filePath)
+	testFilePath := fmt.Sprintf(
+		"%s_test.go",
+		filePath[0:len(filePath)-len(ext)],
+	)
+	_, ok := watchedFiles[testFilePath]
+	return ok
 }
 
 func test(dirs []string) {
