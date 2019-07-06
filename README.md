@@ -3,7 +3,7 @@
 <img src="https://github.com/axcdnt/snitch/blob/master/logo.png" width="200">
 
 Snitch is a binary that helps your TDD cycle (or not) by watching tests and implementations of Go files.
-It works by scanning files, checking the modification date on save re-running your tests.
+It works by scanning files, checking the modification date on save and re-running your tests.
 
 It's usual in Go projects to keep the implementation and tests under the same package, so this binary follows this _convention_.
 
