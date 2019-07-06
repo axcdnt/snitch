@@ -18,7 +18,7 @@ type FileInfo map[string]time.Time
 func main() {
 	defaultPath, err := os.Getwd()
 	if err != nil {
-		log.Fatalf("could not get current directory: %v", err)
+		log.Fatal("could not get current directory: ", err)
 	}
 
 	rootPath := flag.String("path", defaultPath, "the root path to be watched")
@@ -30,7 +30,7 @@ func main() {
 	}
 
 	if err := os.Chdir(*rootPath); err != nil {
-		log.Fatal("could not change directory:", err)
+		log.Fatal("could not change directory: ", err)
 	}
 
 	log.Print("Snitch started")
@@ -55,16 +55,16 @@ func scan(rootPath *string, watchedFiles FileInfo) {
 				pkgDir := path.Dir(filePath)
 				modifiedDirs[pkgDir] = true
 			}
+			continue
 		}
 
 		// files recently added
 		fileInfo, err := os.Stat(filePath)
 		if err != nil {
-			log.Print("Stat:", filePath, err)
+			log.Print("Stat: ", filePath, err)
 			continue
 		}
 		watchedFiles[filePath] = fileInfo.ModTime()
-		continue
 	}
 
 	if len(modifiedDirs) == 0 {
@@ -81,7 +81,7 @@ func scan(rootPath *string, watchedFiles FileInfo) {
 func walk(rootPath *string) FileInfo {
 	wf := FileInfo{}
 	if err := filepath.Walk(*rootPath, visit(wf)); err != nil {
-		log.Fatal("could not traverse files:", err)
+		log.Fatal("could not traverse files: ", err)
 	}
 
 	return wf
