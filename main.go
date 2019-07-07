@@ -129,8 +129,9 @@ func test(dirs []string) {
 	for _, dir := range dirs {
 		stdOut, _ := exec.Command(
 			"go", "test", "-v", "-cover", dir).CombinedOutput()
-		fmt.Println(string(stdOut))
-		go notify(string(stdOut))
+		result := string(stdOut)
+		fmt.Println(result)
+		notify(result, dir)
 	}
 }
 
@@ -140,11 +141,12 @@ func clear() {
 	cmd.Run()
 }
 
-func notify(output string) {
+func notify(output, dir string) {
 	pass, fail := parser.ParseOutput(output)
-	status := fmt.Sprintf("pass: %d fail: %d", pass, fail)
+	status := fmt.Sprintf("%d success %d fail", pass, fail)
+	subtitle := filepath.Base(dir)
 	notification := fmt.Sprintf(
-		"display notification \"%s\" with title \"%s\" subtitle \"%s\"", status, "Snitch", "status")
+		"display notification \"%s\" with title \"%s\" subtitle \"%s\"", status, "Snitch", subtitle)
 	cmd := exec.Command("osascript", "-e", notification)
 	cmd.Run()
 }
