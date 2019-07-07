@@ -136,7 +136,7 @@ func test(dirs []string) {
 			"go", "test", "-v", "-cover", dir).CombinedOutput()
 		output := string(stdOut)
 		fmt.Println(output)
-		notifier.Notify(output, dir)
+		notifier.Notify(output, filepath.Base(dir))
 	}
 }
 

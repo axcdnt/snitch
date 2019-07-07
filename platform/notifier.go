@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 
 	"github.com/axcdnt/snitch/parser"
@@ -24,7 +23,7 @@ func NewNotifier() Notifier {
 
 // Notifier represents a platform notifier
 type Notifier interface {
-	Notify(status, dir string)
+	Notify(status, pkg string)
 }
 
 // DarwinNotifier represents macOS notifier
@@ -32,12 +31,13 @@ type DarwinNotifier struct {
 }
 
 // Notify notifies desktop notifications on macOS
-func (d DarwinNotifier) Notify(output, dir string) {
-	pass, fail := parser.ParseOutput(output)
-	status := fmt.Sprintf("%d pass, %d fail", pass, fail)
-	subtitle := filepath.Base(dir)
+func (d DarwinNotifier) Notify(output, pkg string) {
 	msg := fmt.Sprintf(
-		"display notification \"%s\" with title \"%s\" subtitle \"%s\"", status, "Snitch", subtitle)
+		"display notification \"%s\" with title \"%s\" subtitle \"%s\"",
+		status(output),
+		"Snitch",
+		pkg,
+	)
 	exec.Command("osascript", "-e", msg).Run()
 }
 
@@ -46,13 +46,16 @@ type LinuxNotifier struct {
 }
 
 // Notify notifies desktop notifications on Linux
-func (l LinuxNotifier) Notify(output, dir string) {
-	pass, fail := parser.ParseOutput(output)
-	status := fmt.Sprintf("%d pass, %d fail", pass, fail)
-	msg := fmt.Sprintf("%s: %s", filepath.Base(dir), status)
+func (l LinuxNotifier) Notify(output, pkg string) {
+	msg := fmt.Sprintf("%s: %s", pkg, status(output))
 	err := exec.Command(
 		"notify-send", "-a", "Snitch", "-c", "im", "Snitch", msg).Run()
 	if err != nil {
 		log.Print("Command not found: ", err)
 	}
+}
+
+func status(output string) string {
+	pass, fail := parser.ParseOutput(output)
+	return fmt.Sprintf("%d pass, %d fail", pass, fail)
 }
