@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -144,9 +145,19 @@ func clear() {
 func notify(output, dir string) {
 	pass, fail := parser.ParseOutput(output)
 	status := fmt.Sprintf("%d success %d fail", pass, fail)
-	subtitle := filepath.Base(dir)
-	notification := fmt.Sprintf(
-		"display notification \"%s\" with title \"%s\" subtitle \"%s\"", status, "Snitch", subtitle)
-	cmd := exec.Command("osascript", "-e", notification)
-	cmd.Run()
+
+	switch runtime.GOOS {
+	case "darwin":
+		subtitle := filepath.Base(dir)
+		msg := fmt.Sprintf(
+			"display notification \"%s\" with title \"%s\" subtitle \"%s\"", status, "Snitch", subtitle)
+		exec.Command("osascript", "-e", msg).Run()
+	case "linux":
+		msg := fmt.Sprintf("'%s'", status)
+		err := exec.Command(
+			"notify-send", "-a", "Snitch", "-c", "im", "Snitch", msg).Run()
+		if err != nil {
+			log.Print("Command not found: ", err)
+		}
+	}
 }
