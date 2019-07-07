@@ -119,7 +119,6 @@ func isTestFile(fileName string) bool {
 
 // hasTesfile verifies if a *.go file has a test
 func hasTesfile(filePath string, watchedFiles FileInfo) bool {
-	// looks for a _test.go file
 	ext := filepath.Ext(filePath)
 	testFilePath := fmt.Sprintf(
 		"%s_test.go",
