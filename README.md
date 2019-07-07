@@ -21,7 +21,7 @@ Inspired by [Guard](https://github.com/guard/guard), I decided to build this and
 - Re-scan new files, so no need to restart
 - Runs on a package basis
 - Shows test coverage percentage
-- Supports notifications on MacOS
+- Desktop notifications on macOS and Linux (via `notify-send`)
 
 ## Requirements
 

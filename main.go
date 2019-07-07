@@ -11,11 +11,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/axcdnt/snitch/parser"
+	"github.com/axcdnt/snitch/platform"
 )
 
 // FileInfo represents a file and its modification date
 type FileInfo map[string]time.Time
+
+var notifier platform.Notifier
+
+func init() {
+	notifier = platform.NewNotifier()
+}
 
 func main() {
 	defaultPath, err := os.Getwd()
@@ -113,7 +119,6 @@ func isTestFile(fileName string) bool {
 
 // hasTesfile verifies if a *.go file has a test
 func hasTesfile(filePath string, watchedFiles FileInfo) bool {
-	// looks for a _test.go file
 	ext := filepath.Ext(filePath)
 	testFilePath := fmt.Sprintf(
 		"%s_test.go",
@@ -129,24 +134,14 @@ func test(dirs []string) {
 	for _, dir := range dirs {
 		stdOut, _ := exec.Command(
 			"go", "test", "-v", "-cover", dir).CombinedOutput()
-		result := string(stdOut)
-		fmt.Println(result)
-		notify(result, dir)
+		output := string(stdOut)
+		fmt.Println(output)
+		notifier.Notify(output, dir)
 	}
 }
 
 func clear() {
 	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
-	cmd.Run()
-}
-
-func notify(output, dir string) {
-	pass, fail := parser.ParseOutput(output)
-	status := fmt.Sprintf("%d success %d fail", pass, fail)
-	subtitle := filepath.Base(dir)
-	notification := fmt.Sprintf(
-		"display notification \"%s\" with title \"%s\" subtitle \"%s\"", status, "Snitch", subtitle)
-	cmd := exec.Command("osascript", "-e", notification)
 	cmd.Run()
 }
