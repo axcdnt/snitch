@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/axcdnt/snitch/parser"
 )
 
 // FileInfo represents a file and its modification date
@@ -125,15 +127,24 @@ func hasTesfile(filePath string, watchedFiles FileInfo) bool {
 func test(dirs []string) {
 	clear()
 	for _, dir := range dirs {
-		cmd := exec.Command("go", "test", "-v", "-cover", dir)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Run()
+		stdOut, _ := exec.Command(
+			"go", "test", "-v", "-cover", dir).CombinedOutput()
+		fmt.Println(string(stdOut))
+		go notify(string(stdOut))
 	}
 }
 
 func clear() {
 	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
+	cmd.Run()
+}
+
+func notify(output string) {
+	pass, fail := parser.ParseOutput(output)
+	status := fmt.Sprintf("pass: %d fail: %d", pass, fail)
+	notification := fmt.Sprintf(
+		"display notification \"%s\" with title \"%s\" subtitle \"%s\"", status, "Snitch", "status")
+	cmd := exec.Command("osascript", "-e", notification)
 	cmd.Run()
 }
