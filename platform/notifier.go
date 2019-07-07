@@ -34,7 +34,7 @@ type DarwinNotifier struct {
 // Notify notifies desktop notifications on macOS
 func (d DarwinNotifier) Notify(output, dir string) {
 	pass, fail := parser.ParseOutput(output)
-	status := fmt.Sprintf("%d success %d fail", pass, fail)
+	status := fmt.Sprintf("%d pass, %d fail", pass, fail)
 	subtitle := filepath.Base(dir)
 	msg := fmt.Sprintf(
 		"display notification \"%s\" with title \"%s\" subtitle \"%s\"", status, "Snitch", subtitle)
@@ -48,8 +48,8 @@ type LinuxNotifier struct {
 // Notify notifies desktop notifications on Linux
 func (l LinuxNotifier) Notify(output, dir string) {
 	pass, fail := parser.ParseOutput(output)
-	status := fmt.Sprintf("%d success %d fail", pass, fail)
-	msg := fmt.Sprintf("'%s %s'", dir, status)
+	status := fmt.Sprintf("%d pass, %d fail", pass, fail)
+	msg := fmt.Sprintf("%s: %s", filepath.Base(dir), status)
 	err := exec.Command(
 		"notify-send", "-a", "Snitch", "-c", "im", "Snitch", msg).Run()
 	if err != nil {
