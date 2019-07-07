@@ -8,15 +8,20 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
-	"github.com/axcdnt/snitch/parser"
+	"github.com/axcdnt/snitch/platform"
 )
 
 // FileInfo represents a file and its modification date
 type FileInfo map[string]time.Time
+
+var notifier platform.Notifier
+
+func init() {
+	notifier = platform.NewNotifier()
+}
 
 func main() {
 	defaultPath, err := os.Getwd()
@@ -130,9 +135,9 @@ func test(dirs []string) {
 	for _, dir := range dirs {
 		stdOut, _ := exec.Command(
 			"go", "test", "-v", "-cover", dir).CombinedOutput()
-		result := string(stdOut)
-		fmt.Println(result)
-		notify(result, dir)
+		output := string(stdOut)
+		fmt.Println(output)
+		notifier.Notify(output, dir)
 	}
 }
 
@@ -140,24 +145,4 @@ func clear() {
 	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
 	cmd.Run()
-}
-
-func notify(output, dir string) {
-	pass, fail := parser.ParseOutput(output)
-	status := fmt.Sprintf("%d success %d fail", pass, fail)
-
-	switch runtime.GOOS {
-	case "darwin":
-		subtitle := filepath.Base(dir)
-		msg := fmt.Sprintf(
-			"display notification \"%s\" with title \"%s\" subtitle \"%s\"", status, "Snitch", subtitle)
-		exec.Command("osascript", "-e", msg).Run()
-	case "linux":
-		msg := fmt.Sprintf("'%s'", status)
-		err := exec.Command(
-			"notify-send", "-a", "Snitch", "-c", "im", "Snitch", msg).Run()
-		if err != nil {
-			log.Print("Command not found: ", err)
-		}
-	}
 }
