@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestParseOutput(t *testing.T) {
+func TestParseResult(t *testing.T) {
 	type args struct {
 		output string
 	}
@@ -53,7 +53,7 @@ func TestParseOutput(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			pass, fail := ParseOutput(tt.args.output)
+			pass, fail := ParseResult(tt.args.output)
 			if pass != tt.want.pass || fail != tt.want.fail {
 				t.Errorf("want %d %d, got %d %d", tt.want.pass, tt.want.fail, pass, fail)
 			}

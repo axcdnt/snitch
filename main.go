@@ -134,9 +134,9 @@ func test(dirs []string) {
 	for _, dir := range dirs {
 		stdOut, _ := exec.Command(
 			"go", "test", "-v", "-cover", dir).CombinedOutput()
-		output := string(stdOut)
-		fmt.Println(output)
-		notifier.Notify(output, filepath.Base(dir))
+		result := string(stdOut)
+		fmt.Println(result)
+		notifier.Notify(result, filepath.Base(dir))
 	}
 }
 

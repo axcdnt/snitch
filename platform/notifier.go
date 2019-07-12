@@ -23,7 +23,7 @@ func NewNotifier() Notifier {
 
 // Notifier represents a platform notifier
 type Notifier interface {
-	Notify(status, pkg string)
+	Notify(result, pkg string)
 }
 
 // DarwinNotifier represents macOS notifier
@@ -31,10 +31,10 @@ type DarwinNotifier struct {
 }
 
 // Notify notifies desktop notifications on macOS
-func (d DarwinNotifier) Notify(output, pkg string) {
+func (d DarwinNotifier) Notify(result, pkg string) {
 	msg := fmt.Sprintf(
 		"display notification \"%s\" with title \"%s\" subtitle \"%s\"",
-		status(output),
+		statusMsg(result),
 		"Snitch",
 		pkg,
 	)
@@ -46,8 +46,8 @@ type LinuxNotifier struct {
 }
 
 // Notify notifies desktop notifications on Linux
-func (l LinuxNotifier) Notify(output, pkg string) {
-	msg := fmt.Sprintf("%s: %s", pkg, status(output))
+func (l LinuxNotifier) Notify(result, pkg string) {
+	msg := fmt.Sprintf("%s: %s", pkg, statusMsg(result))
 	err := exec.Command(
 		"notify-send", "-a", "Snitch", "-c", "im", "Snitch", msg).Run()
 	if err != nil {
@@ -55,7 +55,7 @@ func (l LinuxNotifier) Notify(output, pkg string) {
 	}
 }
 
-func status(output string) string {
-	pass, fail := parser.ParseOutput(output)
+func statusMsg(result string) string {
+	pass, fail := parser.ParseResult(result)
 	return fmt.Sprintf("%d pass, %d fail", pass, fail)
 }
