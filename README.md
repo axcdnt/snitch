@@ -1,4 +1,4 @@
-# Snitch
+# Snitch [![Build Status](https://travis-ci.org/axcdnt/snitch.svg?branch=master)](https://travis-ci.org/axcdnt/snitch)
 
 <img src="https://github.com/axcdnt/snitch/blob/master/logo.png" width="200">
 
@@ -42,6 +42,7 @@ Usage of snitch:
     	the interval (in seconds) for scanning files (default 1s)
   -path string
     	the root path to be watched (default "<current-dir>")
+  -v    Print the current version and exit
 ```
 
 Feedback is welcome. I hope you enjoy it!

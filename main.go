@@ -17,16 +17,13 @@ import (
 // FileInfo represents a file and its modification date
 type FileInfo map[string]time.Time
 
-var notifier platform.Notifier
+var (
+	notifier platform.Notifier
+	version  string
+)
 
 func init() {
 	notifier = platform.NewNotifier()
-}
-
-var version string
-
-func printVersion() {
-	log.Printf("Current build version: %s", version)
 }
 
 func main() {
@@ -58,6 +55,10 @@ func main() {
 	for range time.NewTicker(*interval).C {
 		scan(rootPath, watchedFiles)
 	}
+}
+
+func printVersion() {
+	log.Printf("Current build version: %s", version)
 }
 
 func scan(rootPath *string, watchedFiles FileInfo) {
