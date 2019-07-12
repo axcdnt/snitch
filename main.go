@@ -23,15 +23,27 @@ func init() {
 	notifier = platform.NewNotifier()
 }
 
+var version string
+
+func printVersion() {
+	log.Printf("Current build version: %s", version)
+}
+
 func main() {
 	defaultPath, err := os.Getwd()
 	if err != nil {
 		log.Fatal("could not get current directory: ", err)
 	}
 
+	versionFlag := flag.Bool("v", false, "Print the current version and exit")
 	rootPath := flag.String("path", defaultPath, "the root path to be watched")
 	interval := flag.Duration("interval", 1*time.Second, "the interval (in seconds) for scanning files")
 	flag.Parse()
+
+	if *versionFlag {
+		printVersion()
+		return
+	}
 
 	if *interval < 0 {
 		log.Fatal("invalid interval, must be > 0", *interval)
