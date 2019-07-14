@@ -1,16 +1,15 @@
 language: go
-
-go:
-  1.12.x
-
-install:
-  go get github.com/axcdnt/snitch
-
-before_script:
-  make check
-
-script:
-  make format test
-
-after_success:
-  make build
+go: 1.12.x
+install: go get github.com/axcdnt/snitch
+before_script: make check
+script: make format test
+after_success: make build
+deploy:
+  provider: releases
+  api_key:
+    secure: Hxn+EzSPz0kvd/2RScI6DMY2RYY1d7OFH21/ZlWltYmZg0uCNcF+svg8vxaJ2s1NSVgEn53Ar9pt+6wq4Dx8bDKt0ZV1IhUzkFDc7GHfRfxv/tj46GXkjgAKKfjB9nWSbMTK0I6iWcFBNtw5yxeGncq3GH/E8F+3tDRWNl/WK9DZTNFK/3U5vNI/MIcHbEHZdJszFiHQFDydNSZUcW98JkSge3sRVqE0DeUW8RL2bkSTi12yioVyIDnmjbEJQRGokeamW5GMAWDGnX/6ReFUnea7LFYUhhNVw3sPwQduyO+kfYT0Izf/HhbW3LBlE/NBIfTemo0omkW3puq2hl9ZWllI0hLnKl/QRNUmMDPd+j51AzP8gWGqFqZhwv6670SVCM1PLXVh7srsAFXtmnllkS5geSjifD/iSFd/g8/ciUE9egp5jBL/dPOBMUG24vOnLR3d1gTJhtnSHlOYzDdlXIspVXw7ByKuiebA4RZHaE8qoSbrT5NHzr9sNgofsdEeghYX103BrCHc8tFANNZHGOX/Qj5fQCTLexPyg8v91x0ON3RXeGo8ZSsw9iddsKYrLzD4Sk7MuOrFyUYkW1tIynjS7/K5PmLq0N8306VV5ZtkTSQsWEw9a5VTXg/pC3nOvFyB3IPzBMnNbvYGy3Hqv7XRVMmYygqhSa/mWxlUmkk=
+  file:
+    - "release/snitch-linux-amd64"
+    - "release/snitch-darwin-amd64"
+  on:
+    tags: true

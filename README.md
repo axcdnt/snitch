@@ -1,4 +1,8 @@
-# Snitch [![Build Status](https://travis-ci.org/axcdnt/snitch.svg?branch=master)](https://travis-ci.org/axcdnt/snitch)
+# Snitch
+
+[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/axcdnt/snitch/issues)
+[![Build Status](https://travis-ci.org/axcdnt/snitch.svg?branch=master)](https://travis-ci.org/axcdnt/snitch)
+[![Go Report Card](https://goreportcard.com/badge/github.com/axcdnt/snitch)](https://goreportcard.com/report/github.com/axcdnt/snitch)
 
 <img src="https://github.com/axcdnt/snitch/blob/master/logo.png" width="200">
 

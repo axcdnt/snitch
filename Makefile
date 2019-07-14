@@ -22,5 +22,5 @@ test:
 build:
 	@echo ">> building binaries"
 	GOOS=$(LINUX) GOARCH=$(OSARCH) go build -ldflags "-X main.version=$(TRAVIS_TAG)" -o release/snitch-$(LINUX)-$(OSARCH)
-	GOOS=$(LINUX) GOARCH=$(OSARCH) go build -ldflags "-X main.version=$(TRAVIS_TAG)" -o release/snitch-$(DARWIN)-$(OSARCH)
+	GOOS=$(DARWIN) GOARCH=$(OSARCH) go build -ldflags "-X main.version=$(TRAVIS_TAG)" -o release/snitch-$(DARWIN)-$(OSARCH)
 
