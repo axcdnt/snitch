@@ -1,7 +1,7 @@
 LINUX := linux
 DARWIN := darwin
 OSARCH := amd64
-TRAVIS_TAG ?= $(shell git rev-list -1 HEAD)
+TRAVIS_TAG ?= $(shell git describe --abbrev=0)
 
 .PHONY: check format test build
 
