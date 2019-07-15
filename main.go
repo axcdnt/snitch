@@ -100,7 +100,7 @@ func scan(rootPath *string, watchedFiles FileInfo, quiet bool) {
 	for dir := range modifiedDirs {
 		dedup = append(dedup, dir)
 	}
-	test(dedup)
+	test(dedup, quiet)
 }
 
 func walk(rootPath *string) FileInfo {
