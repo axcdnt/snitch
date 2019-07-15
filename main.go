@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/axcdnt/snitch/platform"
 	"github.com/fatih/color"
+	"github.com/fishybell/snitch/platform"
 )
 
 // FileInfo represents a file and its modification date
