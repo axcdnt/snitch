@@ -20,16 +20,6 @@ func TestParseResult(t *testing.T) {
 			name: "it counts pass and fail",
 			args: args{
 				output: `
-				=== RUN   TestHello
-				=== RUN   TestHello/it_must_print_'hello,_person!'
-				=== RUN   TestHello/it_returns_'hello,_world!'_on_empty_string
-				=== RUN   TestHello/in_Spanish
-				=== RUN   TestHello/in_French
-				--- PASS: TestHello (0.00s)
-					--- PASS: TestHello/it_must_print_'hello,_person!' (0.00s)
-					--- PASS: TestHello/it_returns_'hello,_world!'_on_empty_string (0.00s)
-					--- PASS: TestHello/in_Spanish (0.00s)
-					--- PASS: TestHello/in_French (0.00s)
 				=== RUN   TestSum
 				=== RUN   TestSum/it_sums_collections_of_any_size
 				--- PASS: TestSum (0.00s)
@@ -46,7 +36,7 @@ func TestParseResult(t *testing.T) {
 				`,
 			},
 			want: status{
-				pass: 10,
+				pass: 5,
 				fail: 1,
 			},
 		},
