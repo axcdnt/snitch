@@ -1,3 +1,5 @@
+github.com/axcdnt/snitch v1.1.0 h1:dD40R+Ey8U6H8wjvNiMnSau1SEx4PZ4B/xUJGmru+ls=
+github.com/axcdnt/snitch v1.1.0/go.mod h1:mIVWEhe1Off4Pv5FIMTcqxMPBQKsF+Z70su9XBr2CdU=
 github.com/fatih/color v1.7.0 h1:DkWD4oS2D8LGGgTQ6IvwJJXSL5Vp2ffcQg58nFV38Ys=
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/mattn/go-colorable v0.1.2 h1:/bC9yWikZXAL9uJdulbSfyVNIR3n3trXl+v8+1sx8mU=

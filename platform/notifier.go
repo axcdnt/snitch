@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"runtime"
 
-	"github.com/axcdnt/snitch/parser"
+	"github.com/fishybell/snitch/parser"
 )
 
 // NewNotifier creates a notifier

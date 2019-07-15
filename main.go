@@ -38,6 +38,7 @@ func main() {
 	versionFlag := flag.Bool("v", false, "Print the current version and exit")
 	rootPath := flag.String("path", defaultPath, "the root path to be watched")
 	interval := flag.Duration("interval", 1*time.Second, "the interval (in seconds) for scanning files")
+	quietFlag := flag.Bool("q", true, "Only print failing tests (quiet)")
 	flag.Parse()
 
 	if *versionFlag {
@@ -56,7 +57,7 @@ func main() {
 	log.Print("Snitch started")
 	watchedFiles := walk(rootPath)
 	for range time.NewTicker(*interval).C {
-		scan(rootPath, watchedFiles)
+		scan(rootPath, watchedFiles, *quietFlag)
 	}
 }
 
@@ -64,7 +65,7 @@ func printVersion() {
 	log.Printf("Current build version: %s", version)
 }
 
-func scan(rootPath *string, watchedFiles FileInfo) {
+func scan(rootPath *string, watchedFiles FileInfo, quiet bool) {
 	modifiedDirs := make(map[string]bool, 0)
 	for filePath, mostRecentModTime := range walk(rootPath) {
 		lastModTime, found := watchedFiles[filePath]
@@ -145,13 +146,13 @@ func hasTesfile(filePath string, watchedFiles FileInfo) bool {
 	return ok
 }
 
-func test(dirs []string) {
+func test(dirs []string, quiet bool) {
 	clear()
 	for _, dir := range dirs {
 		stdout, _ := exec.Command(
 			"go", "test", "-v", "-cover", dir).CombinedOutput()
 		result := string(stdout)
-		prettyPrint(result)
+		prettyPrint(result, quiet)
 		notifier.Notify(result, filepath.Base(dir))
 	}
 }
@@ -162,12 +163,14 @@ func clear() {
 	cmd.Run()
 }
 
-func prettyPrint(result string) {
+func prettyPrint(result string, quiet bool) {
 	for _, line := range strings.Split(result, "\n") {
 		trimmed := strings.TrimSpace(line)
 		switch {
 		case strings.HasPrefix(trimmed, "--- PASS"):
-			pass.Println(trimmed)
+			if !quiet {
+				pass.Println(trimmed)
+			}
 		case strings.HasPrefix(trimmed, "--- FAIL"):
 			fail.Println(trimmed)
 		default:

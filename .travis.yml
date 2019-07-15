@@ -1,6 +1,6 @@
 language: go
 go: 1.12.x
-install: go get github.com/axcdnt/snitch
+install: go get github.com/fishybell/snitch
 before_script: make check
 script: make format test
 after_success: make build
