@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/axcdnt/snitch/platform"
+	"github.com/fatih/color"
 )
 
 // FileInfo represents a file and its modification date
@@ -20,6 +21,8 @@ type FileInfo map[string]time.Time
 var (
 	notifier platform.Notifier
 	version  string
+	pass     = color.New(color.FgGreen)
+	fail     = color.New(color.FgHiRed)
 )
 
 func init() {
@@ -145,10 +148,10 @@ func hasTesfile(filePath string, watchedFiles FileInfo) bool {
 func test(dirs []string) {
 	clear()
 	for _, dir := range dirs {
-		stdOut, _ := exec.Command(
+		stdout, _ := exec.Command(
 			"go", "test", "-v", "-cover", dir).CombinedOutput()
-		result := string(stdOut)
-		fmt.Println(result)
+		result := string(stdout)
+		prettyPrint(result)
 		notifier.Notify(result, filepath.Base(dir))
 	}
 }
@@ -157,4 +160,18 @@ func clear() {
 	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
 	cmd.Run()
+}
+
+func prettyPrint(result string) {
+	for _, line := range strings.Split(result, "\n") {
+		trimmed := strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(trimmed, "--- PASS"):
+			pass.Println(trimmed)
+		case strings.HasPrefix(trimmed, "--- FAIL"):
+			fail.Println(trimmed)
+		default:
+			fmt.Println(trimmed)
+		}
+	}
 }

@@ -5,9 +5,8 @@ import (
 )
 
 // ParseResult returns test statuses for pass and fail
-func ParseResult(output string) (pass, fail int) {
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+func ParseResult(result string) (pass, fail int) {
+	for _, line := range strings.Split(result, "\n") {
 		trimmed := strings.TrimSpace(line)
 		switch {
 		case strings.HasPrefix(trimmed, "--- PASS"):
