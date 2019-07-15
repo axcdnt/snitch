@@ -39,6 +39,7 @@ func main() {
 	rootPath := flag.String("path", defaultPath, "the root path to be watched")
 	interval := flag.Duration("interval", 1*time.Second, "the interval (in seconds) for scanning files")
 	quietFlag := flag.Bool("q", true, "Only print failing tests (quiet)")
+	notifyFlag := flag.Bool("n", false, "Use system notifications")
 	flag.Parse()
 
 	if *versionFlag {
@@ -57,7 +58,7 @@ func main() {
 	log.Print("Snitch started")
 	watchedFiles := walk(rootPath)
 	for range time.NewTicker(*interval).C {
-		scan(rootPath, watchedFiles, *quietFlag)
+		scan(rootPath, watchedFiles, *quietFlag, *notifyFlag)
 	}
 }
 
@@ -65,7 +66,7 @@ func printVersion() {
 	log.Printf("Current build version: %s", version)
 }
 
-func scan(rootPath *string, watchedFiles FileInfo, quiet bool) {
+func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool) {
 	modifiedDirs := make(map[string]bool, 0)
 	for filePath, mostRecentModTime := range walk(rootPath) {
 		lastModTime, found := watchedFiles[filePath]
@@ -100,7 +101,7 @@ func scan(rootPath *string, watchedFiles FileInfo, quiet bool) {
 	for dir := range modifiedDirs {
 		dedup = append(dedup, dir)
 	}
-	test(dedup, quiet)
+	test(dedup, quiet, notify)
 }
 
 func walk(rootPath *string) FileInfo {
@@ -146,14 +147,16 @@ func hasTesfile(filePath string, watchedFiles FileInfo) bool {
 	return ok
 }
 
-func test(dirs []string, quiet bool) {
+func test(dirs []string, quiet bool, notify bool) {
 	clear()
 	for _, dir := range dirs {
 		stdout, _ := exec.Command(
 			"go", "test", "-v", "-cover", dir).CombinedOutput()
 		result := string(stdout)
 		prettyPrint(result, quiet)
-		notifier.Notify(result, filepath.Base(dir))
+		if notify {
+			notifier.Notify(result, filepath.Base(dir))
+		}
 	}
 }
 
@@ -167,6 +170,10 @@ func prettyPrint(result string, quiet bool) {
 	for _, line := range strings.Split(result, "\n") {
 		trimmed := strings.TrimSpace(line)
 		switch {
+		case strings.HasPrefix(trimmed, "=== RUN"):
+			if !quiet {
+				fmt.Println(trimmed)
+			}
 		case strings.HasPrefix(trimmed, "--- PASS"):
 			if !quiet {
 				pass.Println(trimmed)
