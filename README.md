@@ -19,6 +19,8 @@ It was a Friday afternoon and I was writing code, but had nothing to watch and r
 
 Inspired by [Guard](https://github.com/guard/guard), I decided to build this and thought more people could benefit from it.
 
+Forked from [snitch](https://github.com/axcdnt/snitch), but with quieter defaults.
+
 ## Features
 
 - Automatically runs your tests
