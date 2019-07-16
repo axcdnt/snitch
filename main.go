@@ -40,6 +40,7 @@ func main() {
 	interval := flag.Duration("interval", 1*time.Second, "the interval (in seconds) for scanning files")
 	quietFlag := flag.Bool("q", true, "Only print failing tests (quiet)")
 	notifyFlag := flag.Bool("n", false, "Use system notifications")
+	fullFlag := flag.Bool("f", false, "Always run entire build")
 	flag.Parse()
 
 	if *versionFlag {
@@ -58,7 +59,7 @@ func main() {
 	log.Print("Snitch started")
 	watchedFiles := walk(rootPath)
 	for range time.NewTicker(*interval).C {
-		scan(rootPath, watchedFiles, *quietFlag, *notifyFlag)
+		scan(rootPath, watchedFiles, *quietFlag, *notifyFlag, *fullFlag)
 	}
 }
 
@@ -66,7 +67,7 @@ func printVersion() {
 	log.Printf("Current build version: %s", version)
 }
 
-func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool) {
+func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, full bool) {
 	modifiedDirs := make(map[string]bool, 0)
 	for filePath, mostRecentModTime := range walk(rootPath) {
 		lastModTime, found := watchedFiles[filePath]
@@ -98,8 +99,12 @@ func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool) {
 	}
 
 	dedup := make([]string, 0)
-	for dir := range modifiedDirs {
-		dedup = append(dedup, dir)
+	if full {
+		dedup = append(dedup, "./...")
+	} else {
+		for dir := range modifiedDirs {
+			dedup = append(dedup, dir)
+		}
 	}
 	test(dedup, quiet, notify)
 }
@@ -128,23 +133,26 @@ func visit(wf FileInfo) filepath.WalkFunc {
 }
 
 func shouldRunTests(filePath string, watchedFiles FileInfo) bool {
-	return isTestFile(filePath) || hasTesfile(filePath, watchedFiles)
+	b := isTestFile(filePath) || hasTestFile(filePath, watchedFiles)
+	fmt.Println("b ", b)
+	return b
 }
 
 func isTestFile(fileName string) bool {
 	return strings.HasSuffix(fileName, "_test.go")
 }
 
-// hasTesfile verifies if a *.go file has a test
-func hasTesfile(filePath string, watchedFiles FileInfo) bool {
-	ext := filepath.Ext(filePath)
-	testFilePath := fmt.Sprintf(
-		"%s_test.go",
-		filePath[0:len(filePath)-len(ext)],
-	)
-	_, ok := watchedFiles[testFilePath]
-
-	return ok
+// hasTestFile verifies if a *.go file has a test
+func hasTestFile(filePath string, watchedFiles FileInfo) bool {
+	dir := filepath.Dir(filePath)
+	for k, _ := range watchedFiles {
+		if filepath.Dir(k) == dir {
+			if isTestFile(k) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func test(dirs []string, quiet bool, notify bool) {
