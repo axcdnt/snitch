@@ -44,8 +44,10 @@ After _go-getting_ the binary, it will probably be available on your terminal.
 Usage of snitch:
   -interval duration
     	the interval (in seconds) for scanning files (default 1s)
+  -n    Use system notifications
   -path string
     	the root path to be watched (default "<current-dir>")
+  -q    Run quietly (default true, use -q=false to make noisy)
   -v    Print the current version and exit
 ```
 
