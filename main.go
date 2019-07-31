@@ -20,7 +20,7 @@ type FileInfo map[string]time.Time
 
 var (
 	notifier platform.Notifier
-	version  string
+	version  = "v1.2.1"
 	pass     = color.New(color.FgGreen)
 	fail     = color.New(color.FgHiRed)
 )
@@ -56,7 +56,7 @@ func main() {
 		log.Fatal("could not change directory: ", err)
 	}
 
-	log.Print("Snitch started")
+	log.Print("Snitch started for", *rootPath)
 	watchedFiles := walk(rootPath)
 	for range time.NewTicker(*interval).C {
 		scan(rootPath, watchedFiles, *quietFlag, *notifyFlag, *fullFlag)
@@ -112,7 +112,7 @@ func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, full
 func walk(rootPath *string) FileInfo {
 	wf := FileInfo{}
 	if err := filepath.Walk(*rootPath, visit(wf)); err != nil {
-		log.Fatal("could not traverse files: ", err)
+		log.Print("Error: could not traverse files (trying again later): ", err)
 	}
 
 	return wf
@@ -134,7 +134,6 @@ func visit(wf FileInfo) filepath.WalkFunc {
 
 func shouldRunTests(filePath string, watchedFiles FileInfo) bool {
 	b := isTestFile(filePath) || hasTestFile(filePath, watchedFiles)
-	fmt.Println("b ", b)
 	return b
 }
 
