@@ -20,7 +20,7 @@ type FileInfo map[string]time.Time
 
 var (
 	notifier platform.Notifier
-	version  = "v1.2.1"
+	version  = "v1.2.2"
 	pass     = color.New(color.FgGreen)
 	fail     = color.New(color.FgHiRed)
 )
@@ -171,6 +171,9 @@ func clear() {
 	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
 	cmd.Run()
+	pass.Println("---------------")
+	fmt.Println(" Running tests")
+	pass.Println("---------------")
 }
 
 func prettyPrint(result string, quiet bool) {
