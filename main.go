@@ -35,13 +35,13 @@ func main() {
 		log.Fatal("could not get current directory: ", err)
 	}
 
-	versionFlag := flag.Bool("v", false, "Print the current version and exit")
-	rootPath := flag.String("path", defaultPath, "the root path to be watched")
-	interval := flag.Duration("interval", 1*time.Second, "the interval (in seconds) for scanning files")
+	versionFlag := flag.Bool("v", false, "prints the current version and exit")
+	rootPath := flag.String("path", defaultPath, "defines the root path to be watched")
+	interval := flag.Duration("interval", 1*time.Second, "defines the interval (in seconds) for scanning files")
 	flag.Parse()
 
 	if *versionFlag {
-		printVersion()
+		log.Printf("Build %s", version)
 		return
 	}
 
@@ -58,10 +58,6 @@ func main() {
 	for range time.NewTicker(*interval).C {
 		scan(rootPath, watchedFiles)
 	}
-}
-
-func printVersion() {
-	log.Printf("Current build version: %s", version)
 }
 
 func scan(rootPath *string, watchedFiles FileInfo) {
@@ -126,15 +122,15 @@ func visit(wf FileInfo) filepath.WalkFunc {
 }
 
 func shouldRunTests(filePath string, watchedFiles FileInfo) bool {
-	return isTestFile(filePath) || hasTesfile(filePath, watchedFiles)
+	return isTestFile(filePath) || hasTestFile(filePath, watchedFiles)
 }
 
 func isTestFile(fileName string) bool {
 	return strings.HasSuffix(fileName, "_test.go")
 }
 
-// hasTesfile verifies if a *.go file has a test
-func hasTesfile(filePath string, watchedFiles FileInfo) bool {
+// hasTestFile verifies if a *.go file has a test
+func hasTestFile(filePath string, watchedFiles FileInfo) bool {
 	ext := filepath.Ext(filePath)
 	testFilePath := fmt.Sprintf(
 		"%s_test.go",
