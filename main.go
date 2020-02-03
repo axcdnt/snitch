@@ -20,7 +20,7 @@ type FileInfo map[string]time.Time
 
 var (
 	notifier platform.Notifier
-	version  = "v1.2.2"
+	version  = "v1.2.3"
 	pass     = color.New(color.FgGreen)
 	fail     = color.New(color.FgHiRed)
 )
@@ -42,6 +42,7 @@ func main() {
 	notifyFlag := flag.Bool("n", false, "Use system notifications")
 	fullFlag := flag.Bool("f", false, "Always run entire build")
 	flag.Parse()
+	remainder := flag.Args()
 
 	if *versionFlag {
 		printVersion()
@@ -59,7 +60,7 @@ func main() {
 	log.Print("Snitch started for", *rootPath)
 	watchedFiles := walk(rootPath)
 	for range time.NewTicker(*interval).C {
-		scan(rootPath, watchedFiles, *quietFlag, *notifyFlag, *fullFlag)
+		scan(rootPath, watchedFiles, *quietFlag, *notifyFlag, *fullFlag, remainder)
 	}
 }
 
@@ -67,7 +68,7 @@ func printVersion() {
 	log.Printf("Current build version: %s", version)
 }
 
-func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, full bool) {
+func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, full bool, remainder []string) {
 	modifiedDirs := make(map[string]bool, 0)
 	for filePath, mostRecentModTime := range walk(rootPath) {
 		lastModTime, found := watchedFiles[filePath]
@@ -106,7 +107,7 @@ func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, full
 			dedup = append(dedup, dir)
 		}
 	}
-	test(dedup, quiet, notify)
+	test(dedup, quiet, notify, remainder)
 }
 
 func walk(rootPath *string) FileInfo {
@@ -154,12 +155,19 @@ func hasTestFile(filePath string, watchedFiles FileInfo) bool {
 	return false
 }
 
-func test(dirs []string, quiet bool, notify bool) {
+func test(dirs []string, quiet bool, notify bool, remainder []string) {
 	clear()
 	for _, dir := range dirs {
-		stdout, _ := exec.Command(
-			"go", "test", "-v", "-cover", dir).CombinedOutput()
+		// build up our command
+		args := []string{"test", "-v"}
+		args = append(args, remainder...)
+		args = append(args, dir)
+
+		// run it and grab the results
+		stdout, _ := exec.Command("go", args...).CombinedOutput()
 		result := string(stdout)
+
+		// be nice to our eyeballs, and give us the results we're looking for
 		prettyPrint(result, quiet)
 		if notify {
 			notifier.Notify(result, filepath.Base(dir))
