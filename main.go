@@ -185,21 +185,43 @@ func clear() {
 }
 
 func prettyPrint(result string, quiet bool) {
+	lastTrim := 0
 	for _, line := range strings.Split(result, "\n") {
-		trimmed := strings.TrimSpace(line)
+		// trim all of it, and see how much got lopped
+		fullTrim := strings.TrimSpace(line)
+		trimmed := len(line) - len(fullTrim)
+		partTrim := fullTrim
+
+		// always chunk off the base trimming
+		toTrim := lastTrim
+		if lastTrim == 0 {
+			lastTrim = trimmed
+			toTrim = lastTrim
+		}
+
+		// if we need more, trim half the remainder, but a leave a little to increase readability
+		if trimmed > toTrim {
+			toTrim += (trimmed - toTrim) / 2
+		}
+
+		// make the cut
+		if len(partTrim) > toTrim {
+			partTrim = line[toTrim:]
+		}
+
 		switch {
-		case strings.HasPrefix(trimmed, "=== RUN"):
+		case strings.HasPrefix(fullTrim, "=== RUN"):
 			if !quiet {
-				fmt.Println(trimmed)
+				fmt.Println(partTrim)
 			}
-		case strings.HasPrefix(trimmed, "--- PASS"):
+		case strings.HasPrefix(fullTrim, "--- PASS"):
 			if !quiet {
-				pass.Println(trimmed)
+				pass.Println(partTrim)
 			}
-		case strings.HasPrefix(trimmed, "--- FAIL"):
-			fail.Println(trimmed)
+		case strings.HasPrefix(fullTrim, "--- FAIL"):
+			fail.Println(partTrim)
 		default:
-			fmt.Println(trimmed)
+			fmt.Println(partTrim)
 		}
 	}
 }
