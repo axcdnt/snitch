@@ -20,7 +20,7 @@ type FileInfo map[string]time.Time
 
 var (
 	notifier platform.Notifier
-	version  = "v1.2.3"
+	version  = "v1.3.1"
 	pass     = color.New(color.FgGreen)
 	fail     = color.New(color.FgHiRed)
 )
