@@ -20,7 +20,7 @@ type FileInfo map[string]time.Time
 
 var (
 	notifier platform.Notifier
-	version  = "v1.3.1"
+	version  = "v1.3.2"
 	pass     = color.New(color.FgGreen)
 	fail     = color.New(color.FgHiRed)
 )
@@ -204,9 +204,9 @@ func prettyPrint(result string, quiet bool) {
 			toTrim += (trimmed - toTrim) / 2
 		}
 
-		// make the cut
-		if len(partTrim) > toTrim {
-			partTrim = line[toTrim:]
+		// make the cut (but don't cut off the beginnning)
+		if len(line) > toTrim {
+			partTrim = line[min(toTrim, trimmed):]
 		}
 
 		switch {
@@ -224,4 +224,12 @@ func prettyPrint(result string, quiet bool) {
 			fmt.Println(partTrim)
 		}
 	}
+}
+
+func min(a, b int) int {
+	if a > b {
+		return b
+	}
+
+	return a
 }
