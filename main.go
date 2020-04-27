@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,9 +22,10 @@ type FileInfo map[string]time.Time
 
 var (
 	notifier platform.Notifier
-	version  = "v1.4.0"
+	version  = "v1.4.1"
 	pass     = color.New(color.FgGreen)
 	fail     = color.New(color.FgHiRed)
+	termReg  = regexp.MustCompile("[0-9]* ([0-9]*)\n")
 )
 
 func init() {
@@ -189,23 +192,48 @@ func test(dirs []string, quiet bool, notify bool, once bool, remainder []string)
 	}
 }
 
+func fillTerminal() string {
+	return strings.Repeat("-", termWidth())
+}
+
+func termWidth() int {
+	cmd := exec.Command("stty", "size")
+	cmd.Stdin = os.Stdin
+	out, err := cmd.Output()
+	if err != nil {
+		return 80 // standard width, back in the day
+	}
+
+	subs := termReg.FindStringSubmatch(string(out))
+	if len(subs) != 2 {
+		return 80 // standard width, back in the day
+	}
+
+	width, err := strconv.Atoi(subs[1]) // the 2nd index will be our sub-match, the 1st will be the whole kit and kaboodle
+	if err != nil {
+		return 80 // standard width, back in the day
+	}
+
+	return width
+}
+
 func clear(msg string) {
 	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
 	cmd.Run()
-	pass.Println("-------------------------------------------------------------------------------")
+	pass.Println(fillTerminal())
 	fmt.Println(msg)
-	pass.Println("-------------------------------------------------------------------------------")
+	pass.Println(fillTerminal())
 }
 
 func sadClear(filePath string) {
 	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
 	cmd.Run()
-	fail.Println("-------------------------------------------------------------------------------")
+	fail.Println(fillTerminal())
 	fmt.Println(" No tests found for file:\n", filePath)
 	fmt.Println("\n Use `snitch -s` to instead run all tests")
-	fail.Println("-------------------------------------------------------------------------------")
+	fail.Println(fillTerminal())
 }
 
 func prettyPrint(result string, quiet bool) {

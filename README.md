@@ -1,10 +1,10 @@
 # Snitch
 
-[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/axcdnt/snitch/issues)
-[![Build Status](https://travis-ci.org/axcdnt/snitch.svg?branch=master)](https://travis-ci.org/axcdnt/snitch)
-[![Go Report Card](https://goreportcard.com/badge/github.com/axcdnt/snitch)](https://goreportcard.com/report/github.com/axcdnt/snitch)
+[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/fishybell/snitch/issues)
+[![Build Status](https://travis-ci.org/fishybell/snitch.svg?branch=master)](https://travis-ci.org/fishybell/snitch)
+[![Go Report Card](https://goreportcard.com/badge/github.com/fishybell/snitch)](https://goreportcard.com/report/github.com/fishybell/snitch)
 
-<img src="https://github.com/axcdnt/snitch/blob/master/logo.png" width="200">
+<img src="https://github.com/fishybell/snitch/blob/master/logo.png" width="200">
 
 Snitch is a binary that helps your TDD cycle (or not) by watching tests and implementations of Go files.
 It works by scanning files, checking the modification date on save and re-running your tests.
@@ -35,7 +35,7 @@ Go 1.12+ :heart:
 
 The binary is _go-gettable_. Make sure you have `GOPATH` correctly set and added to the `$PATH`:
 
-`go get github.com/axcdnt/snitch`
+`go get -u github.com/fishybell/snitch`
 
 After _go-getting_ the binary, it will probably be available on your terminal.
 
@@ -44,14 +44,16 @@ After _go-getting_ the binary, it will probably be available on your terminal.
 ```
 ▶ snitch --help
 Usage of snitch:
-  -f    Always run entire build
+  -f    [f]ull: Always run entire build
   -interval duration
-    	the interval (in seconds) for scanning files (default 1s)
-  -n    Use system notifications
+        The interval (in seconds) for scanning files (default 1s)
+  -n    [n]otify: Use system notifications
+  -o    [o]nce: Only fail once, don't run subsequent tests
   -path string
-    	the root path to be watched (default "<current-dir>")
-  -q    Run quietly (default true, use -q=false to make noisy)
-  -v    Print the current version and exit
+        The root path to be watched (default "/Users/nbell/devel/rediq-deal-aggregator/src")
+  -q    [q]uiet: Only print failing tests (use -q=false to be noisy again) (default true)
+  -s    [s]mart: Run entire build when no test files are found
+  -v    [v]ersion: Print the current version and exit
 ```
 
 Feedback is welcome. I hope you enjoy it!
