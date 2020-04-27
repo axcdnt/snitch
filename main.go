@@ -20,7 +20,7 @@ type FileInfo map[string]time.Time
 
 var (
 	notifier platform.Notifier
-	version  = "v1.3.2"
+	version  = "v1.4.0"
 	pass     = color.New(color.FgGreen)
 	fail     = color.New(color.FgHiRed)
 )
@@ -35,12 +35,14 @@ func main() {
 		log.Fatal("could not get current directory: ", err)
 	}
 
-	versionFlag := flag.Bool("v", false, "Print the current version and exit")
-	rootPath := flag.String("path", defaultPath, "the root path to be watched")
-	interval := flag.Duration("interval", 1*time.Second, "the interval (in seconds) for scanning files")
-	quietFlag := flag.Bool("q", true, "Only print failing tests (quiet)")
-	notifyFlag := flag.Bool("n", false, "Use system notifications")
-	fullFlag := flag.Bool("f", false, "Always run entire build")
+	versionFlag := flag.Bool("v", false, "[v]ersion: Print the current version and exit")
+	rootPath := flag.String("path", defaultPath, "The root path to be watched")
+	interval := flag.Duration("interval", 1*time.Second, "The interval (in seconds) for scanning files")
+	quietFlag := flag.Bool("q", true, "[q]uiet: Only print failing tests (use -q=false to be noisy again)")
+	notifyFlag := flag.Bool("n", false, "[n]otify: Use system notifications")
+	onceFlag := flag.Bool("o", false, "[o]nce: Only fail once, don't run subsequent tests")
+	fullFlag := flag.Bool("f", false, "[f]ull: Always run entire build")
+	smartFlag := flag.Bool("s", false, "[s]mart: Run entire build when no test files are found")
 	flag.Parse()
 	remainder := flag.Args()
 
@@ -60,7 +62,7 @@ func main() {
 	log.Print("Snitch started for", *rootPath)
 	watchedFiles := walk(rootPath)
 	for range time.NewTicker(*interval).C {
-		scan(rootPath, watchedFiles, *quietFlag, *notifyFlag, *fullFlag, remainder)
+		scan(rootPath, watchedFiles, *quietFlag, *notifyFlag, *onceFlag, *fullFlag, *smartFlag, remainder)
 	}
 }
 
@@ -68,7 +70,7 @@ func printVersion() {
 	log.Printf("Current build version: %s", version)
 }
 
-func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, full bool, remainder []string) {
+func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, once bool, full bool, smart bool, remainder []string) {
 	modifiedDirs := make(map[string]bool, 0)
 	for filePath, mostRecentModTime := range walk(rootPath) {
 		lastModTime, found := watchedFiles[filePath]
@@ -82,6 +84,14 @@ func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, full
 			if shouldRunTests(filePath, watchedFiles) {
 				pkgDir := path.Dir(filePath)
 				modifiedDirs[pkgDir] = true
+			} else {
+				if smart {
+					fmt.Println("running all tests....")
+					modifiedDirs["something"] = true
+					full = true
+				} else {
+					sadClear(filePath)
+				}
 			}
 			continue
 		}
@@ -101,13 +111,15 @@ func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, full
 
 	dedup := make([]string, 0)
 	if full {
+		clear(" Running all tests")
 		dedup = append(dedup, "./...")
 	} else {
+		clear(" Running tests")
 		for dir := range modifiedDirs {
 			dedup = append(dedup, dir)
 		}
 	}
-	test(dedup, quiet, notify, remainder)
+	test(dedup, quiet, notify, once, remainder)
 }
 
 func walk(rootPath *string) FileInfo {
@@ -155,11 +167,13 @@ func hasTestFile(filePath string, watchedFiles FileInfo) bool {
 	return false
 }
 
-func test(dirs []string, quiet bool, notify bool, remainder []string) {
-	clear()
+func test(dirs []string, quiet bool, notify bool, once bool, remainder []string) {
 	for _, dir := range dirs {
 		// build up our command
 		args := []string{"test", "-v"}
+		if once {
+			args = append(args, "-failfast")
+		}
 		args = append(args, remainder...)
 		args = append(args, dir)
 
@@ -175,13 +189,23 @@ func test(dirs []string, quiet bool, notify bool, remainder []string) {
 	}
 }
 
-func clear() {
+func clear(msg string) {
 	cmd := exec.Command("clear")
 	cmd.Stdout = os.Stdout
 	cmd.Run()
-	pass.Println("---------------")
-	fmt.Println(" Running tests")
-	pass.Println("---------------")
+	pass.Println("-------------------------------------------------------------------------------")
+	fmt.Println(msg)
+	pass.Println("-------------------------------------------------------------------------------")
+}
+
+func sadClear(filePath string) {
+	cmd := exec.Command("clear")
+	cmd.Stdout = os.Stdout
+	cmd.Run()
+	fail.Println("-------------------------------------------------------------------------------")
+	fmt.Println(" No tests found for file:\n", filePath)
+	fmt.Println("\n Use `snitch -s` to instead run all tests")
+	fail.Println("-------------------------------------------------------------------------------")
 }
 
 func prettyPrint(result string, quiet bool) {
