@@ -21,11 +21,14 @@ import (
 type FileInfo map[string]time.Time
 
 var (
-	notifier platform.Notifier
-	version  = "v1.4.1"
-	pass     = color.New(color.FgGreen)
-	fail     = color.New(color.FgHiRed)
-	termReg  = regexp.MustCompile("[0-9]* ([0-9]*)\n")
+	notifier       platform.Notifier
+	version        = "v1.5.0"
+	pass           = color.New(color.FgGreen)
+	fail           = color.New(color.FgHiRed)
+	termReg        = regexp.MustCompile("[0-9]* ([0-9]*)\n")
+	passTestReg    = regexp.MustCompile("^PASS$")
+	okTestReg      = regexp.MustCompile("^ok.*[a-zA-Z0-9/-_]*\\s*[0-9]*\\.[0-9]*s$")
+	skippedTestReg = regexp.MustCompile("^?\\s*[a-zA-Z0-9/-_]*\\s*\\[no test files\\]$")
 )
 
 func init() {
@@ -238,6 +241,8 @@ func sadClear(filePath string) {
 
 func prettyPrint(result string, quiet bool) {
 	lastTrim := 0
+	testsPassed := 0
+	testsFailed := 0
 	for _, line := range strings.Split(result, "\n") {
 		// trim all of it, and see how much got lopped
 		fullTrim := strings.TrimSpace(line)
@@ -267,14 +272,36 @@ func prettyPrint(result string, quiet bool) {
 				fmt.Println(partTrim)
 			}
 		case strings.HasPrefix(fullTrim, "--- PASS"):
+			testsPassed++
 			if !quiet {
 				pass.Println(partTrim)
 			}
 		case strings.HasPrefix(fullTrim, "--- FAIL"):
+			testsFailed++
 			fail.Println(partTrim)
+		case passTestReg.Match([]byte(fullTrim)):
+			testsPassed++
+			if !quiet {
+				fmt.Println(partTrim)
+			}
+		case okTestReg.Match([]byte(fullTrim)):
+			if !quiet {
+				fmt.Println(partTrim)
+			}
+		case skippedTestReg.Match([]byte(fullTrim)):
+			if !quiet {
+				fmt.Println(partTrim)
+			}
 		default:
 			fmt.Println(partTrim)
 		}
+	}
+
+	if testsPassed > 0 {
+		pass.Printf("\nPassed %d tests\n", testsPassed)
+	}
+	if testsFailed > 0 {
+		fail.Printf("\nFailed %d tests\n", testsFailed)
 	}
 }
 
