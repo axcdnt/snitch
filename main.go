@@ -22,15 +22,15 @@ type FileInfo map[string]time.Time
 
 var (
 	notifier       platform.Notifier
-	version        = "v1.6.0"
+	version        = "v1.6.1"
 	pass           = color.New(color.FgGreen)
 	fail           = color.New(color.FgHiRed)
 	termReg        = regexp.MustCompile("[0-9]* ([0-9]*)\n")
 	passTestReg    = regexp.MustCompile("^PASS$")
 	okTestReg      = regexp.MustCompile("^ok.*[a-zA-Z0-9/-_]*\\s*[0-9]*\\.[0-9]*s$")
 	skippedTestReg = regexp.MustCompile("^?\\s*[a-zA-Z0-9/-_]*\\s*\\[no test files\\]$")
-	wrongDirReg    = regexp.MustCompile("^?\\s*can't load package: package ([a-zA-Z-\\.\\/0-9]*).*GOROOT \\((.*)\\)")
-	outsideDirReg  = regexp.MustCompile("^?\\s*go: directory ([a-zA-Z-\\.\\/0-9]*) is outside main module")
+	wrongDirReg    = regexp.MustCompile("^?\\s*can't load package: package (.*) is not.*GOROOT \\((.*)\\)")
+	outsideDirReg  = regexp.MustCompile("^?\\s*go: directory (.*) is outside main module")
 )
 
 func init() {
@@ -208,6 +208,9 @@ func test(dirs []string, quiet bool, notify bool, once bool, remainder []string,
 					pass.Println(fillTerminal())
 					test([]string{newDir}, quiet, notify, once, remainder, false) // false = disallow recursion
 					os.Chdir(curDir)
+				} else {
+					fmt.Println(" Failed to recurse into", followPath, "for tests:\n\t", err)
+					fail.Println(fillTerminal())
 				}
 			} else {
 				fmt.Println(" Not recursing into", followPath, "for tests")
@@ -269,6 +272,7 @@ func prettyPrint(result string, quiet bool) (followPath string) {
 	found := wrongDirReg.FindSubmatch([]byte(result))
 	if len(found) > 1 {
 		followPath = string(found[1])
+
 		return
 	}
 
@@ -276,6 +280,7 @@ func prettyPrint(result string, quiet bool) (followPath string) {
 	found = outsideDirReg.FindSubmatch([]byte(result))
 	if len(found) > 1 {
 		followPath = string(found[1])
+
 		return
 	}
 
