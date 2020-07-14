@@ -22,13 +22,15 @@ type FileInfo map[string]time.Time
 
 var (
 	notifier       platform.Notifier
-	version        = "v1.5.0"
+	version        = "v1.6.0"
 	pass           = color.New(color.FgGreen)
 	fail           = color.New(color.FgHiRed)
 	termReg        = regexp.MustCompile("[0-9]* ([0-9]*)\n")
 	passTestReg    = regexp.MustCompile("^PASS$")
 	okTestReg      = regexp.MustCompile("^ok.*[a-zA-Z0-9/-_]*\\s*[0-9]*\\.[0-9]*s$")
 	skippedTestReg = regexp.MustCompile("^?\\s*[a-zA-Z0-9/-_]*\\s*\\[no test files\\]$")
+	wrongDirReg    = regexp.MustCompile("^?\\s*can't load package: package ([a-zA-Z-\\.\\/0-9]*).*GOROOT \\((.*)\\)")
+	outsideDirReg  = regexp.MustCompile("^?\\s*go: directory ([a-zA-Z-\\.\\/0-9]*) is outside main module")
 )
 
 func init() {
@@ -125,7 +127,7 @@ func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, once
 			dedup = append(dedup, dir)
 		}
 	}
-	test(dedup, quiet, notify, once, remainder)
+	test(dedup, quiet, notify, once, remainder, true) // true = allow recursion
 }
 
 func walk(rootPath *string) FileInfo {
@@ -173,7 +175,7 @@ func hasTestFile(filePath string, watchedFiles FileInfo) bool {
 	return false
 }
 
-func test(dirs []string, quiet bool, notify bool, once bool, remainder []string) {
+func test(dirs []string, quiet bool, notify bool, once bool, remainder []string, recurse bool) {
 	for _, dir := range dirs {
 		// build up our command
 		args := []string{"test", "-v"}
@@ -188,7 +190,30 @@ func test(dirs []string, quiet bool, notify bool, once bool, remainder []string)
 		result := string(stdout)
 
 		// be nice to our eyeballs, and give us the results we're looking for
-		prettyPrint(result, quiet)
+		if followPath := prettyPrint(result, quiet); followPath != "" {
+			// it turns out we failed to run the tests completely, and should just change directories and re-run
+			if recurse {
+				curDir, _ := os.Getwd()
+				// try directly first
+				newDir := path.Join(curDir, followPath)
+				err := os.Chdir(newDir)
+				if err != nil {
+					// try in vendor second
+					newDir = path.Join(curDir, "vendor", followPath)
+					err = os.Chdir(newDir)
+				}
+
+				if err == nil {
+					fmt.Println(" Recursing into", followPath, "for tests")
+					pass.Println(fillTerminal())
+					test([]string{newDir}, quiet, notify, once, remainder, false) // false = disallow recursion
+					os.Chdir(curDir)
+				}
+			} else {
+				fmt.Println(" Not recursing into", followPath, "for tests")
+				fail.Println(fillTerminal())
+			}
+		}
 		if notify {
 			notifier.Notify(result, filepath.Base(dir))
 		}
@@ -239,7 +264,21 @@ func sadClear(filePath string) {
 	fail.Println(fillTerminal())
 }
 
-func prettyPrint(result string, quiet bool) {
+func prettyPrint(result string, quiet bool) (followPath string) {
+	// see if we failed to test because we're in the wrong directory
+	found := wrongDirReg.FindSubmatch([]byte(result))
+	if len(found) > 1 {
+		followPath = string(found[1])
+		return
+	}
+
+	// see if we're outside of the main module path
+	found = outsideDirReg.FindSubmatch([]byte(result))
+	if len(found) > 1 {
+		followPath = string(found[1])
+		return
+	}
+
 	lastTrim := 0
 	testsPassed := 0
 	testsFailed := 0
@@ -303,6 +342,8 @@ func prettyPrint(result string, quiet bool) {
 	if testsFailed > 0 {
 		fail.Printf("\nFailed %d tests\n", testsFailed)
 	}
+
+	return
 }
 
 func min(a, b int) int {
