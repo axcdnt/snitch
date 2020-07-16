@@ -22,14 +22,15 @@ type FileInfo map[string]time.Time
 
 var (
 	notifier       platform.Notifier
-	version        = "v1.6.1"
+	version        = "v1.6.2"
 	pass           = color.New(color.FgGreen)
 	fail           = color.New(color.FgHiRed)
 	termReg        = regexp.MustCompile("[0-9]* ([0-9]*)\n")
 	passTestReg    = regexp.MustCompile("^PASS$")
 	okTestReg      = regexp.MustCompile("^ok.*[a-zA-Z0-9/-_]*\\s*[0-9]*\\.[0-9]*s$")
 	skippedTestReg = regexp.MustCompile("^?\\s*[a-zA-Z0-9/-_]*\\s*\\[no test files\\]$")
-	wrongDirReg    = regexp.MustCompile("^?\\s*can't load package: package (.*) is not.*GOROOT \\((.*)\\)")
+	wrongPathReg   = regexp.MustCompile("^?\\s*can't load package: package (.*): import (.*): cannot import absolute path")
+	wrongSubDirReg = regexp.MustCompile("^?\\s*can't load package: package (.*) is not.*GOROOT \\((.*)\\)")
 	outsideDirReg  = regexp.MustCompile("^?\\s*go: directory (.*) is outside main module")
 )
 
@@ -195,17 +196,20 @@ func test(dirs []string, quiet bool, notify bool, once bool, remainder []string,
 			if recurse {
 				curDir, _ := os.Getwd()
 				// try directly first
-				newDir := path.Join(curDir, followPath)
+				newDir := followPath
 				err := os.Chdir(newDir)
 				if err != nil {
-					// try in vendor second
-					newDir = path.Join(curDir, "vendor", followPath)
-					err = os.Chdir(newDir)
+					// next go into it as a subdir
+					newDir = path.Join(curDir, followPath)
+					err := os.Chdir(newDir)
+					if err != nil {
+						// finally try it in the vendor dir
+						newDir = path.Join(curDir, "vendor", followPath)
+						err = os.Chdir(newDir)
+					}
 				}
 
 				if err == nil {
-					fmt.Println(" Recursing into", followPath, "for tests")
-					pass.Println(fillTerminal())
 					test([]string{newDir}, quiet, notify, once, remainder, false) // false = disallow recursion
 					os.Chdir(curDir)
 				} else {
@@ -268,8 +272,16 @@ func sadClear(filePath string) {
 }
 
 func prettyPrint(result string, quiet bool) (followPath string) {
+	// see if we failed to test because we're completely outside of the correct path
+	found := wrongPathReg.FindSubmatch([]byte(result))
+	if len(found) > 1 {
+		followPath = string(found[1])
+
+		return
+	}
+
 	// see if we failed to test because we're in the wrong directory
-	found := wrongDirReg.FindSubmatch([]byte(result))
+	found = wrongSubDirReg.FindSubmatch([]byte(result))
 	if len(found) > 1 {
 		followPath = string(found[1])
 
