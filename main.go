@@ -287,7 +287,6 @@ func prettyPrint(result string, quiet bool) (followPath string, recursable bool)
 	found := wrongPathReg.FindSubmatch([]byte(result))
 	if len(found) > 1 {
 		followPath = string(found[1])
-		fmt.Println("wrongPathReg", followPath)
 
 		return
 	}
@@ -296,7 +295,6 @@ func prettyPrint(result string, quiet bool) (followPath string, recursable bool)
 	found = wrongSubDirReg.FindSubmatch([]byte(result))
 	if len(found) > 1 {
 		followPath = string(found[1])
-		fmt.Println("wrongSubDirReg", followPath)
 
 		return
 	}
@@ -305,7 +303,6 @@ func prettyPrint(result string, quiet bool) (followPath string, recursable bool)
 	found = outsideDirReg.FindSubmatch([]byte(result))
 	if len(found) > 1 {
 		followPath = string(found[1])
-		fmt.Println("outsideDirReg", followPath)
 
 		return
 	}
