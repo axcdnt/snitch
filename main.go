@@ -22,7 +22,7 @@ type FileInfo map[string]time.Time
 
 var (
 	notifier       platform.Notifier
-	version        = "v1.6.2"
+	version        = "v1.6.3"
 	pass           = color.New(color.FgGreen)
 	fail           = color.New(color.FgHiRed)
 	termReg        = regexp.MustCompile("[0-9]* ([0-9]*)\n")
@@ -211,7 +211,7 @@ func test(dirs []string, quiet bool, notify bool, once bool, remainder []string,
 				if err != nil {
 					// next go into it as a subdir
 					newDir = path.Join(curDir, followPath)
-					err := os.Chdir(newDir)
+					err = os.Chdir(newDir)
 					if err != nil {
 						// finally try it in the vendor dir
 						newDir = path.Join(curDir, "vendor", followPath)
