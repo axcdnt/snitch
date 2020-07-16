@@ -32,6 +32,7 @@ var (
 	wrongPathReg   = regexp.MustCompile("^?\\s*can't load package: package (.*): import (.*): cannot import absolute path")
 	wrongSubDirReg = regexp.MustCompile("^?\\s*can't load package: package (.*) is not.*GOROOT \\((.*)\\)")
 	outsideDirReg  = regexp.MustCompile("^?\\s*go: directory (.*) is outside main module")
+	topDirMemo     = map[string]string{}
 )
 
 func init() {
@@ -90,13 +91,13 @@ func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, once
 			}
 
 			watchedFiles[filePath] = mostRecentModTime
+			pkgDir := path.Dir(filePath)
 			if shouldRunTests(filePath, watchedFiles) {
-				pkgDir := path.Dir(filePath)
 				modifiedDirs[pkgDir] = true
 			} else {
 				if smart {
 					fmt.Println("running all tests....")
-					modifiedDirs["something"] = true
+					modifiedDirs[pkgDir] = true
 					full = true
 				} else {
 					sadClear(filePath)
@@ -119,16 +120,25 @@ func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, once
 	}
 
 	dedup := make([]string, 0)
+	recurse := false
+	curDir, _ := os.Getwd()
 	if full {
 		clear(" Running all tests")
 		dedup = append(dedup, "./...")
+		topDir := findTopDir(curDir, modifiedDirs)
+
+		if len(topDir) > 0 {
+			os.Chdir(topDir)
+		}
 	} else {
 		clear(" Running tests")
 		for dir := range modifiedDirs {
 			dedup = append(dedup, dir)
+			recurse = true
 		}
 	}
-	test(dedup, quiet, notify, once, remainder, true) // true = allow recursion
+	test(dedup, quiet, notify, once, remainder, recurse)
+	os.Chdir(curDir)
 }
 
 func walk(rootPath *string) FileInfo {
@@ -166,7 +176,7 @@ func isTestFile(fileName string) bool {
 // hasTestFile verifies if a *.go file has a test
 func hasTestFile(filePath string, watchedFiles FileInfo) bool {
 	dir := filepath.Dir(filePath)
-	for k, _ := range watchedFiles {
+	for k := range watchedFiles {
 		if filepath.Dir(k) == dir {
 			if isTestFile(k) {
 				return true
@@ -191,7 +201,7 @@ func test(dirs []string, quiet bool, notify bool, once bool, remainder []string,
 		result := string(stdout)
 
 		// be nice to our eyeballs, and give us the results we're looking for
-		if followPath := prettyPrint(result, quiet); followPath != "" {
+		if followPath, recursable := prettyPrint(result, quiet); followPath != "" {
 			// it turns out we failed to run the tests completely, and should just change directories and re-run
 			if recurse {
 				curDir, _ := os.Getwd()
@@ -210,15 +220,16 @@ func test(dirs []string, quiet bool, notify bool, once bool, remainder []string,
 				}
 
 				if err == nil {
-					test([]string{newDir}, quiet, notify, once, remainder, false) // false = disallow recursion
-					os.Chdir(curDir)
+					test([]string{newDir}, quiet, notify, once, remainder, recursable)
 				} else {
 					fmt.Println(" Failed to recurse into", followPath, "for tests:\n\t", err)
 					fail.Println(fillTerminal())
+					fmt.Print(result)
 				}
 			} else {
 				fmt.Println(" Not recursing into", followPath, "for tests")
 				fail.Println(fillTerminal())
+				fmt.Print(result)
 			}
 		}
 		if notify {
@@ -271,11 +282,12 @@ func sadClear(filePath string) {
 	fail.Println(fillTerminal())
 }
 
-func prettyPrint(result string, quiet bool) (followPath string) {
+func prettyPrint(result string, quiet bool) (followPath string, recursable bool) {
 	// see if we failed to test because we're completely outside of the correct path
 	found := wrongPathReg.FindSubmatch([]byte(result))
 	if len(found) > 1 {
 		followPath = string(found[1])
+		fmt.Println("wrongPathReg", followPath)
 
 		return
 	}
@@ -284,6 +296,7 @@ func prettyPrint(result string, quiet bool) (followPath string) {
 	found = wrongSubDirReg.FindSubmatch([]byte(result))
 	if len(found) > 1 {
 		followPath = string(found[1])
+		fmt.Println("wrongSubDirReg", followPath)
 
 		return
 	}
@@ -292,6 +305,7 @@ func prettyPrint(result string, quiet bool) (followPath string) {
 	found = outsideDirReg.FindSubmatch([]byte(result))
 	if len(found) > 1 {
 		followPath = string(found[1])
+		fmt.Println("outsideDirReg", followPath)
 
 		return
 	}
@@ -369,4 +383,56 @@ func min(a, b int) int {
 	}
 
 	return a
+}
+
+// memoized function to find the deepest directory with a go.mod for a given path
+func findTopDir(curDir string, modifiedDirs map[string]bool) string {
+	var topDir string
+	for dir := range modifiedDirs {
+		var candidate string
+		// have we already found the go.mod for this directory?
+		if value, ok := topDirMemo[dir]; ok {
+			candidate = value
+		} else {
+
+			// well, I guess we've never found it, so find it
+			candidate = path.Dir(dir)
+			if candidate == curDir {
+				// if we're checking the same directory we're already in, no need to look anywhere else
+				return ""
+			}
+
+			goFile := path.Join(candidate, "go.mod") // obviously broken if your project doesn't have a go.mod file
+			if !fileExists(goFile) {
+
+				// keep trying to find it
+				candidate = findTopDir(curDir, map[string]bool{
+					candidate: true,
+				})
+			}
+
+			if len(candidate) > 0 {
+				// remember our decision for this path
+				topDirMemo[dir] = candidate
+			}
+		}
+
+		// find the deepest directory only (or at least the one with the longest name) as we're only changing dirs once
+		if len(candidate) > len(topDir) {
+			topDir = candidate
+		}
+	}
+
+	return topDir
+}
+
+// from https://golangcode.com/check-if-a-file-exists/
+// fileExists checks if a file exists and is not a directory before we
+// try using it to prevent further errors.
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }
