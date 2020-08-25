@@ -22,7 +22,7 @@ type FileInfo map[string]time.Time
 
 var (
 	notifier       platform.Notifier
-	version        = "v1.6.3"
+	version        = "v1.7.0"
 	pass           = color.New(color.FgGreen)
 	fail           = color.New(color.FgHiRed)
 	termReg        = regexp.MustCompile("[0-9]* ([0-9]*)\n")
@@ -32,12 +32,24 @@ var (
 	wrongPathReg   = regexp.MustCompile("^?\\s*can't load package: package (.*): import (.*): cannot import absolute path")
 	wrongSubDirReg = regexp.MustCompile("^?\\s*can't load package: package (.*) is not.*GOROOT \\((.*)\\)")
 	outsideDirReg  = regexp.MustCompile("^?\\s*go: directory (.*) is outside main module")
+	wrongModMode   = regexp.MustCompile("^?\\s*build flag -mod=.* only valid when using modules")
 	topDirMemo     = map[string]string{}
 )
 
 func init() {
 	notifier = platform.NewNotifier()
 }
+
+type debugFunc func(...interface{})
+
+func debugYes(args ...interface{}) {
+	fmt.Print(args...)
+}
+
+func debugNo(...interface{}) {
+}
+
+var debug debugFunc
 
 func main() {
 	defaultPath, err := os.Getwd()
@@ -53,12 +65,20 @@ func main() {
 	onceFlag := flag.Bool("o", false, "[o]nce: Only fail once, don't run subsequent tests")
 	fullFlag := flag.Bool("f", false, "[f]ull: Always run entire build")
 	smartFlag := flag.Bool("s", false, "[s]mart: Run entire build when no test files are found")
+	modModeFlag := flag.String("m", "mod", "The modules mode (passed to -mod= at test time)")
+	debugFlag := flag.Bool("d", false, "Run with some debug output")
 	flag.Parse()
 	remainder := flag.Args()
 
 	if *versionFlag {
 		printVersion()
 		return
+	}
+
+	if *debugFlag {
+		debug = debugYes
+	} else {
+		debug = debugNo
 	}
 
 	if *interval < 0 {
@@ -72,7 +92,7 @@ func main() {
 	log.Print("Snitch started for", *rootPath)
 	watchedFiles := walk(rootPath)
 	for range time.NewTicker(*interval).C {
-		scan(rootPath, watchedFiles, *quietFlag, *notifyFlag, *onceFlag, *fullFlag, *smartFlag, remainder)
+		scan(rootPath, watchedFiles, *quietFlag, *notifyFlag, *onceFlag, *fullFlag, *smartFlag, *modModeFlag, remainder)
 	}
 }
 
@@ -80,7 +100,7 @@ func printVersion() {
 	log.Printf("Current build version: %s", version)
 }
 
-func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, once bool, full bool, smart bool, remainder []string) {
+func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, once bool, full bool, smart bool, modMode string, remainder []string) {
 	modifiedDirs := make(map[string]bool, 0)
 	for filePath, mostRecentModTime := range walk(rootPath) {
 		lastModTime, found := watchedFiles[filePath]
@@ -137,7 +157,7 @@ func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, once
 			recurse = true
 		}
 	}
-	test(dedup, quiet, notify, once, remainder, recurse)
+	test(dedup, quiet, notify, once, remainder, recurse, modMode)
 	os.Chdir(curDir)
 }
 
@@ -186,33 +206,56 @@ func hasTestFile(filePath string, watchedFiles FileInfo) bool {
 	return false
 }
 
-func test(dirs []string, quiet bool, notify bool, once bool, remainder []string, recurse bool) {
+func test(dirs []string, quiet bool, notify bool, once bool, remainder []string, recurse bool, modMode string) {
 	for _, dir := range dirs {
 		// build up our command
 		args := []string{"test", "-v"}
 		if once {
 			args = append(args, "-failfast")
 		}
+		if modMode != "" {
+			args = append(args, "-mod="+modMode)
+		}
 		args = append(args, remainder...)
 		args = append(args, dir)
 
 		// run it and grab the results
+		debug("Running go test\n")
+		debug("go")
+		for _, arg := range args {
+			debug(" ", arg)
+		}
+		debug("\n")
 		stdout, _ := exec.Command("go", args...).CombinedOutput()
 		result := string(stdout)
 
-		// be nice to our eyeballs, and give us the results we're looking for
-		if followPath, recursable := prettyPrint(result, quiet); followPath != "" {
+		// first see if we failed to test because we're completely outside of the correct path (but using -mod= flag)
+		var followPath string
+		var recursable bool
+		if wrongModMode.Match(stdout) {
+			followPath = dir
+			recursable = true
+			debug("on the wrong track (-mod=*)\n", followPath)
+		} else {
+			// be nice to our eyeballs, and give us the results we're looking for
+			followPath, recursable = prettyPrint(result, quiet)
+		}
+
+		if followPath != "" {
 			// it turns out we failed to run the tests completely, and should just change directories and re-run
 			if recurse {
 				curDir, _ := os.Getwd()
+				debug("if at first\n", curDir)
 				// try directly first
 				newDir := followPath
 				err := os.Chdir(newDir)
 				if err != nil {
+					debug("you don't succeed\n", err)
 					// next go into it as a subdir
 					newDir = path.Join(curDir, followPath)
 					err = os.Chdir(newDir)
 					if err != nil {
+						debug("try, and try again\n", err)
 						// finally try it in the vendor dir
 						newDir = path.Join(curDir, "vendor", followPath)
 						err = os.Chdir(newDir)
@@ -220,14 +263,14 @@ func test(dirs []string, quiet bool, notify bool, once bool, remainder []string,
 				}
 
 				if err == nil {
-					test([]string{newDir}, quiet, notify, once, remainder, recursable)
+					test([]string{newDir}, quiet, notify, once, remainder, recursable, modMode)
 				} else {
-					fmt.Println(" Failed to recurse into", followPath, "for tests:\n\t", err)
+					debug(" Failed to recurse into\n", followPath, "for tests:\n\t", err)
 					fail.Println(fillTerminal())
 					fmt.Print(result)
 				}
 			} else {
-				fmt.Println(" Not recursing into", followPath, "for tests")
+				debug(" Not recursing into\n", followPath, "for tests")
 				fail.Println(fillTerminal())
 				fmt.Print(result)
 			}
@@ -270,6 +313,8 @@ func clear(msg string) {
 	pass.Println(fillTerminal())
 	fmt.Println(msg)
 	pass.Println(fillTerminal())
+	curDir, _ := os.Getwd()
+	debug("currently at\n", curDir)
 }
 
 func sadClear(filePath string) {
@@ -287,6 +332,8 @@ func prettyPrint(result string, quiet bool) (followPath string, recursable bool)
 	found := wrongPathReg.FindSubmatch([]byte(result))
 	if len(found) > 1 {
 		followPath = string(found[1])
+		recursable = true
+		debug("on the wrong track\n", followPath)
 
 		return
 	}
@@ -295,6 +342,8 @@ func prettyPrint(result string, quiet bool) (followPath string, recursable bool)
 	found = wrongSubDirReg.FindSubmatch([]byte(result))
 	if len(found) > 1 {
 		followPath = string(found[1])
+		recursable = true
+		debug("on the right track\n", followPath)
 
 		return
 	}
@@ -303,6 +352,8 @@ func prettyPrint(result string, quiet bool) (followPath string, recursable bool)
 	found = outsideDirReg.FindSubmatch([]byte(result))
 	if len(found) > 1 {
 		followPath = string(found[1])
+		recursable = true
+		debug("on the outside track\n", followPath)
 
 		return
 	}

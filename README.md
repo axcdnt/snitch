@@ -31,7 +31,7 @@ Forked from [snitch](https://github.com/axcdnt/snitch), but with quieter default
 
 ## Requirements
 
-Go 1.12+ :heart:
+Go 1.12+
 
 The binary is _go-gettable_. Make sure you have `GOPATH` correctly set and added to the `$PATH`:
 
@@ -44,13 +44,16 @@ After _go-getting_ the binary, it will probably be available on your terminal.
 ```
 ▶ snitch --help
 Usage of snitch:
+  -d    Run with some debug output
   -f    [f]ull: Always run entire build
   -interval duration
         The interval (in seconds) for scanning files (default 1s)
+  -m string
+        The modules mode (passed to -mod= at test time) (default "mod")
   -n    [n]otify: Use system notifications
   -o    [o]nce: Only fail once, don't run subsequent tests
   -path string
-        The root path to be watched (default "/Users/nbell/devel/rediq-deal-aggregator/src")
+        The root path to be watched (default "/Users/nbell/devel/rediq-deal-aggregator")
   -q    [q]uiet: Only print failing tests (use -q=false to be noisy again) (default true)
   -s    [s]mart: Run entire build when no test files are found
   -v    [v]ersion: Print the current version and exit
