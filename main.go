@@ -46,10 +46,14 @@ func debugYes(args ...interface{}) {
 	fmt.Print(args...)
 }
 
-func debugNo(...interface{}) {
+func debugYesln(args ...interface{}) {
+	fmt.Println(args...)
 }
 
+func debugNo(...interface{}) {}
+
 var debug debugFunc
+var debugln debugFunc
 
 func main() {
 	defaultPath, err := os.Getwd()
@@ -65,7 +69,7 @@ func main() {
 	onceFlag := flag.Bool("o", false, "[o]nce: Only fail once, don't run subsequent tests")
 	fullFlag := flag.Bool("f", false, "[f]ull: Always run entire build")
 	smartFlag := flag.Bool("s", false, "[s]mart: Run entire build when no test files are found")
-	modModeFlag := flag.String("m", "mod", "The modules mode (passed to -mod= at test time)")
+	modModeFlag := flag.String("m", "readonly", "The modules mode (passed to -mod= at test time)")
 	debugFlag := flag.Bool("d", false, "Run with some debug output")
 	flag.Parse()
 	remainder := flag.Args()
@@ -77,8 +81,10 @@ func main() {
 
 	if *debugFlag {
 		debug = debugYes
+		debugln = debugYesln
 	} else {
 		debug = debugNo
+		debugln = debugNo
 	}
 
 	if *interval < 0 {
@@ -220,12 +226,12 @@ func test(dirs []string, quiet bool, notify bool, once bool, remainder []string,
 		args = append(args, dir)
 
 		// run it and grab the results
-		debug("Running go test\n")
+		debugln("Running go test")
 		debug("go")
 		for _, arg := range args {
 			debug(" ", arg)
 		}
-		debug("\n")
+		debugln("")
 		stdout, _ := exec.Command("go", args...).CombinedOutput()
 		result := string(stdout)
 
@@ -235,7 +241,7 @@ func test(dirs []string, quiet bool, notify bool, once bool, remainder []string,
 		if wrongModMode.Match(stdout) {
 			followPath = dir
 			recursable = true
-			debug("on the wrong track (-mod=*)\n", followPath)
+			debugln("on the wrong track (-mod=*)", followPath)
 		} else {
 			// be nice to our eyeballs, and give us the results we're looking for
 			followPath, recursable = prettyPrint(result, quiet)
@@ -245,17 +251,17 @@ func test(dirs []string, quiet bool, notify bool, once bool, remainder []string,
 			// it turns out we failed to run the tests completely, and should just change directories and re-run
 			if recurse {
 				curDir, _ := os.Getwd()
-				debug("if at first\n", curDir)
+				debugln("if at first", curDir)
 				// try directly first
 				newDir := followPath
 				err := os.Chdir(newDir)
 				if err != nil {
-					debug("you don't succeed\n", err)
+					debugln("you don't succeed", err)
 					// next go into it as a subdir
 					newDir = path.Join(curDir, followPath)
 					err = os.Chdir(newDir)
 					if err != nil {
-						debug("try, and try again\n", err)
+						debugln("try, and try again", err)
 						// finally try it in the vendor dir
 						newDir = path.Join(curDir, "vendor", followPath)
 						err = os.Chdir(newDir)
@@ -265,12 +271,12 @@ func test(dirs []string, quiet bool, notify bool, once bool, remainder []string,
 				if err == nil {
 					test([]string{newDir}, quiet, notify, once, remainder, recursable, modMode)
 				} else {
-					debug(" Failed to recurse into\n", followPath, "for tests:\n\t", err)
+					debugln(" Failed to recurse into", followPath, "for tests:\n\t", err)
 					fail.Println(fillTerminal())
 					fmt.Print(result)
 				}
 			} else {
-				debug(" Not recursing into\n", followPath, "for tests")
+				debugln(" Not recursing into", followPath, "for tests")
 				fail.Println(fillTerminal())
 				fmt.Print(result)
 			}
@@ -314,7 +320,7 @@ func clear(msg string) {
 	fmt.Println(msg)
 	pass.Println(fillTerminal())
 	curDir, _ := os.Getwd()
-	debug("currently at\n", curDir)
+	debugln("currently at", curDir)
 }
 
 func sadClear(filePath string) {
@@ -333,7 +339,7 @@ func prettyPrint(result string, quiet bool) (followPath string, recursable bool)
 	if len(found) > 1 {
 		followPath = string(found[1])
 		recursable = true
-		debug("on the wrong track\n", followPath)
+		debugln("on the wrong track", followPath)
 
 		return
 	}
@@ -343,7 +349,7 @@ func prettyPrint(result string, quiet bool) (followPath string, recursable bool)
 	if len(found) > 1 {
 		followPath = string(found[1])
 		recursable = true
-		debug("on the right track\n", followPath)
+		debugln("on the right track", followPath)
 
 		return
 	}
@@ -353,7 +359,7 @@ func prettyPrint(result string, quiet bool) (followPath string, recursable bool)
 	if len(found) > 1 {
 		followPath = string(found[1])
 		recursable = true
-		debug("on the outside track\n", followPath)
+		debugln("on the outside track", followPath)
 
 		return
 	}
