@@ -22,7 +22,7 @@ type FileInfo map[string]time.Time
 
 var (
 	notifier       platform.Notifier
-	version        = "v1.7.0"
+	version        = "v1.7.1"
 	pass           = color.New(color.FgGreen)
 	fail           = color.New(color.FgHiRed)
 	termReg        = regexp.MustCompile("[0-9]* ([0-9]*)\n")
@@ -69,7 +69,7 @@ func main() {
 	onceFlag := flag.Bool("o", false, "[o]nce: Only fail once, don't run subsequent tests")
 	fullFlag := flag.Bool("f", false, "[f]ull: Always run entire build")
 	smartFlag := flag.Bool("s", false, "[s]mart: Run entire build when no test files are found")
-	modModeFlag := flag.String("m", "readonly", "The modules mode (passed to -mod= at test time)")
+	modModeFlag := flag.String("m", "mod", "The modules mode (passed to -mod= at test time)")
 	debugFlag := flag.Bool("d", false, "Run with some debug output")
 	flag.Parse()
 	remainder := flag.Args()
