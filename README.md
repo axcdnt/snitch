@@ -44,6 +44,7 @@ After _go-getting_ the binary, it will probably be available on your terminal.
 ```
 ▶ snitch --help
 Usage of snitch:
+  -tags Passes build tags to go test
   -d    Run with some debug output
   -f    [f]ull: Always run entire build
   -interval duration

@@ -71,6 +71,7 @@ func main() {
 	smartFlag := flag.Bool("s", false, "[s]mart: Run entire build when no test files are found")
 	modModeFlag := flag.String("m", "mod", "The modules mode (passed to -mod= at test time)")
 	debugFlag := flag.Bool("d", false, "Run with some debug output")
+	tagsFlag := flag.String("tags", "", "Pass build tags to go test")
 	flag.Parse()
 	remainder := flag.Args()
 
@@ -98,7 +99,7 @@ func main() {
 	log.Print("Snitch started for", *rootPath)
 	watchedFiles := walk(rootPath)
 	for range time.NewTicker(*interval).C {
-		scan(rootPath, watchedFiles, *quietFlag, *notifyFlag, *onceFlag, *fullFlag, *smartFlag, *modModeFlag, remainder)
+		scan(rootPath, watchedFiles, *quietFlag, *notifyFlag, *onceFlag, *fullFlag, *smartFlag, *modModeFlag, remainder, *tagsFlag)
 	}
 }
 
@@ -106,7 +107,7 @@ func printVersion() {
 	log.Printf("Current build version: %s", version)
 }
 
-func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, once bool, full bool, smart bool, modMode string, remainder []string) {
+func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, once bool, full bool, smart bool, modMode string, remainder []string, tags string) {
 	modifiedDirs := make(map[string]bool, 0)
 	for filePath, mostRecentModTime := range walk(rootPath) {
 		lastModTime, found := watchedFiles[filePath]
@@ -163,7 +164,7 @@ func scan(rootPath *string, watchedFiles FileInfo, quiet bool, notify bool, once
 			recurse = true
 		}
 	}
-	test(dedup, quiet, notify, once, remainder, recurse, modMode)
+	test(dedup, quiet, notify, once, remainder, recurse, modMode, tags)
 	os.Chdir(curDir)
 }
 
@@ -212,7 +213,7 @@ func hasTestFile(filePath string, watchedFiles FileInfo) bool {
 	return false
 }
 
-func test(dirs []string, quiet bool, notify bool, once bool, remainder []string, recurse bool, modMode string) {
+func test(dirs []string, quiet bool, notify bool, once bool, remainder []string, recurse bool, modMode string, tags string) {
 	for _, dir := range dirs {
 		// build up our command
 		args := []string{"test", "-v"}
@@ -222,6 +223,10 @@ func test(dirs []string, quiet bool, notify bool, once bool, remainder []string,
 		if modMode != "" {
 			args = append(args, "-mod="+modMode)
 		}
+		if tags != "" {
+			args = append(args, "--tags="+tags)
+		}
+
 		args = append(args, remainder...)
 		args = append(args, dir)
 
@@ -269,7 +274,7 @@ func test(dirs []string, quiet bool, notify bool, once bool, remainder []string,
 				}
 
 				if err == nil {
-					test([]string{newDir}, quiet, notify, once, remainder, recursable, modMode)
+					test([]string{newDir}, quiet, notify, once, remainder, recursable, modMode, tags)
 				} else {
 					debugln(" Failed to recurse into", followPath, "for tests:\n\t", err)
 					fail.Println(fillTerminal())
